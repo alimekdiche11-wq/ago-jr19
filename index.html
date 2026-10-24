@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AgroScope · Agronomy, Entomology & Plant Protection Workbench</title>
+<meta name="description" content="Field diagnostic workbench: insect identification key, pest and disease library, IPM planner, resistance rotation, scouting log and degree-day models.">
+<link rel="stylesheet" href="assets/css/app.css">
+</head>
+<body>
+
+<div class="shell">
+
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 21c0-6 2-11 8-13-1 7-3 11-8 13Z"/>
+          <path d="M12 21C6 18 4 12 4 4c6 2 8 7 8 17Z"/>
+          <path d="M12 21v-6"/>
+        </svg>
+      </div>
+      <div>
+        <div class="brand-name">AgroScope</div>
+        <div class="brand-sub">Plant protection workbench</div>
+      </div>
+    </div>
+
+    <nav class="nav" id="nav" aria-label="Main"></nav>
+
+    <div class="sidebar-foot">
+      <div class="sidebar-note">
+        <strong>Field use</strong>
+        Decision support only. Confirm identifications; the product label controls every application.
+      </div>
+      <div class="sidebar-meta">v1.0 · offline · local data</div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <button class="icon-btn menu-btn" id="menuBtn" aria-label="Toggle menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      </button>
+
+      <div class="search-wrap">
+        <svg class="search-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input id="globalSearch" type="search" placeholder="Search pest, disease, weed or crop…  ( / )" aria-label="Search the reference library and crop agronomy guides" autocomplete="off" spellcheck="false">
+      </div>
+
+      <div class="topbar-right">
+        <span class="pill pill-ghost" id="dataStamp" title="Dataset revision"></span>
+        <button class="btn btn-primary" data-action="new-scout">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          Scouting entry
+        </button>
+      </div>
+    </header>
+
+    <div id="view" class="view" tabindex="-1"></div>
+
+    <footer class="foot">
+      <span>AgroScope · agronomy / entomology / plant protection</span>
+      <span class="foot-sep">·</span>
+      <a href="#/about">Scope, sources &amp; limits</a>
+    </footer>
+  </main>
+</div>
+
+<div class="modal" id="modal" hidden>
+  <div class="modal-backdrop" data-action="close-modal"></div>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <button class="modal-x" data-action="close-modal" aria-label="Close">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+    <div id="modalBody"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="assets/js/data-core.js"></script>
+<script src="assets/js/data-pests.js"></script>
+<script src="assets/js/data-pests-2.js"></script>
+<script src="assets/js/data-diseases.js"></script>
+<script src="assets/js/data-disorders.js"></script>
+<script src="assets/js/data-guides.js"></script>
+<script src="assets/js/data-ipm.js"></script>
+<script src="assets/js/app.js"></script>
+</body>
+</html>

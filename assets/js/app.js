@@ -1,0 +1,1506 @@
+/* ============================================================
+   AgroScope — application layer
+   Classic script, no dependencies, works from file://
+   ============================================================ */
+
+(function () {
+  "use strict";
+
+  const AGRO = window.AGRO;
+  const $  = (sel, root) => (root || document).querySelector(sel);
+  const $$ = (sel, root) => Array.from((root || document).querySelectorAll(sel));
+
+  /* ---------------- icons ---------------- */
+
+  const ICONS = {
+    dash:   '<path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"/>',
+    diag:   '<path d="M3 12h3.5l2-5.5 3 11 2.5-5.5H21"/>',
+    book:   '<path d="M4 5a2 2 0 0 1 2-2h6v18H6a2 2 0 0 1-2-2Z"/><path d="M20 5a2 2 0 0 0-2-2h-6v18h6a2 2 0 0 0 2-2Z"/>',
+    leaf:   '<path d="M11 20A7 7 0 0 1 4 13c0-6 7-9 15-9 0 8-3 15-9 15Z"/><path d="M4 20c3-5 7-8 12-9"/>',
+    key:    '<path d="M14 7a4 4 0 1 0-3.2 3.9L4 18v3h3l1-1v-2h2v-2h1.1L14 12.9A4 4 0 0 0 14 7Z"/>',
+    ipm:    '<path d="M4 6h16M4 12h16M4 18h10"/><path d="M18 16l2 2 3-3"/>',
+    rotate: '<path d="M20 12a8 8 0 1 1-2.3-5.7"/><path d="M20 4v5h-5"/>',
+    scout:  '<path d="M9 4h6v3H9z"/><path d="M8 5H6a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1h-2"/><path d="M9 12h6M9 16h4"/>',
+    gdd:    '<path d="M10 4a2 2 0 0 1 4 0v9.5a4 4 0 1 1-4 0Z"/><path d="M12 10v6"/>',
+    camera: '<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.2"/>',
+    info:   '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',
+    plus:   '<path d="M12 5v14M5 12h14"/>',
+    arrow:  '<path d="M5 12h14M13 6l6 6-6 6"/>',
+    back:   '<path d="M19 12H5M11 18l-6-6 6-6"/>',
+    print:  '<path d="M7 8V3h10v5"/><path d="M7 18H5a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-2"/><path d="M7 14h10v7H7z"/>',
+    search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+    download:'<path d="M12 3v12M7 11l5 5 5-5"/><path d="M5 21h14"/>',
+    trash:  '<path d="M4 7h16M9 7V4h6v3M6 7l1 14h10l1-14"/>'
+  };
+
+  const icon = (name, cls) =>
+    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" class="${cls || ""}" aria-hidden="true">${ICONS[name] || ""}</svg>`;
+
+  /* ---------------- utilities ---------------- */
+
+  const esc = (s) => String(s == null ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+  const cropOf = (id) => AGRO.crops.find((c) => c.id === id);
+  const cropName = (id) => (cropOf(id) ? cropOf(id).name : id);
+  const symLabel = (id) => {
+    const s = AGRO.symptoms.find((x) => x.id === id);
+    return s ? s.label : id;
+  };
+  const pestById = (id) => AGRO.pests.find((p) => p.id === id);
+
+  const KIND_LABEL = {
+    insect: "Insect", mite: "Mite", disease: "Disease", weed: "Weed",
+    beneficial: "Beneficial", disorder: "Disorder"
+  };
+
+  function sevBar(n) {
+    let html = '<span class="sev sev' + n + '" title="Severity ' + n + '/5">';
+    for (let i = 1; i <= 5; i++) html += '<i class="' + (i <= n ? "on" : "") + '"></i>';
+    return html + "</span>";
+  }
+
+  function kindPill(p) {
+    if (p.kind === "beneficial") return '<span class="pill pill-green">Beneficial</span>';
+    if (p.kind === "disease") return '<span class="pill pill-amber">' + esc(p.type || "Disease") + "</span>";
+    if (p.kind === "weed") return '<span class="pill pill-blue">Weed</span>';
+    if (p.kind === "disorder") return '<span class="pill pill-blue">' + esc(p.type || "Disorder") + "</span>";
+    return '<span class="pill">' + esc(KIND_LABEL[p.kind] || p.kind) + "</span>";
+  }
+
+  /* ---------------- state ---------------- */
+
+  const LS_SCOUT = "agroscope.scout.v1";
+
+  function loadScout() {
+    try { return JSON.parse(localStorage.getItem(LS_SCOUT)) || []; }
+    catch (e) { return []; }
+  }
+
+  const state = {
+    route: "dashboard",
+    param: null,
+    diag: { step: 0, crop: null, organ: null, symptoms: [], pattern: null, allSyms: false },
+    lib: { kind: "all", crop: "all", q: "" },
+    keyTrail: [],
+    keyPath: [AGRO.keyStart],
+    keyNode: AGRO.keyStart,
+    rot: new Set(),
+    scout: loadScout(),
+    gdd: null,
+    cropGuide: null
+  };
+
+  function saveScout() {
+    try { localStorage.setItem(LS_SCOUT, JSON.stringify(state.scout)); }
+    catch (e) { toast("Local storage unavailable — entries kept for this session only."); }
+  }
+
+  let toastTimer = null;
+  function toast(msg) {
+    const t = $("#toast");
+    t.textContent = msg;
+    t.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { t.hidden = true; }, 2600);
+  }
+
+  /* ---------------- modal ---------------- */
+
+  let lastFocused = null;
+  function openModal(html) {
+    lastFocused = document.activeElement;
+    $("#modalBody").innerHTML = html;
+    $("#modal").hidden = false;
+    document.body.style.overflow = "hidden";
+    const card = $("#modal").querySelector(".modal-card");
+    if (card) {
+      const target = card.querySelector(".modal-x") || card;
+      target.focus();
+    }
+  }
+  function closeModal() {
+    $("#modal").hidden = true;
+    $("#modalBody").innerHTML = "";
+    document.body.style.overflow = "";
+    if (lastFocused && typeof lastFocused.focus === "function") lastFocused.focus();
+    lastFocused = null;
+  }
+
+  /* ---------------- navigation ---------------- */
+
+  const NAV = [
+    { section: "Workbench" },
+    { route: "dashboard", label: "Overview", icon: "dash" },
+    { route: "diagnose",  label: "Diagnose a problem", icon: "diag" },
+    { route: "key",       label: "Identification key", icon: "key" },
+    { section: "Reference" },
+    { route: "crops",     label: "Crop agronomy", icon: "leaf" },
+    { route: "library",   label: "Pest & disease library", icon: "book", count: () => AGRO.pests.length },
+    { route: "ipm",       label: "IPM planner", icon: "ipm" },
+    { route: "rotation",  label: "Resistance rotation", icon: "rotate" },
+    { section: "Field tools" },
+    { route: "scout",     label: "Scouting log", icon: "scout", count: () => state.scout.length },
+    { route: "gdd",       label: "Degree days", icon: "gdd" },
+    { route: "protocol",  label: "Photo & sample protocol", icon: "camera" },
+    { section: "About" },
+    { route: "about",     label: "Scope & sources", icon: "info" }
+  ];
+
+  function renderNav() {
+    $("#nav").innerHTML = NAV.map((n) => {
+      if (n.section) return '<div class="nav-label">' + n.section + "</div>";
+      const c = typeof n.count === "function" ? n.count() : null;
+      const isActive = state.route === n.route;
+      return '<a href="#/' + n.route + '" class="' + (isActive ? "active" : "") + '"' +
+        (isActive ? ' aria-current="page"' : "") + ">" +
+        icon(n.icon) + "<span>" + n.label + "</span>" +
+        (c != null ? '<span class="count">' + c + "</span>" : "") + "</a>";
+    }).join("");
+  }
+
+  function parseHash() {
+    const raw = location.hash.replace(/^#\/?/, "");
+    const bits = raw.split("/");
+    return {
+      route: bits[0] || "dashboard",
+      param: bits[1] ? decodeURIComponent(bits[1]) : null,
+      sub: bits[2] ? decodeURIComponent(bits[2]) : null
+    };
+  }
+
+  function render() {
+    const r = parseHash();
+    state.route = r.route;
+    state.param = r.param;
+    state.sub = r.sub;
+
+    const views = {
+      dashboard: viewDashboard,
+      diagnose: viewDiagnose,
+      crops: viewCrops,
+      library: viewLibrary,
+      key: viewKey,
+      ipm: viewIpm,
+      rotation: viewRotation,
+      scout: viewScout,
+      gdd: viewGdd,
+      protocol: viewProtocol,
+      about: viewAbout
+    };
+
+    const fn = views[state.route] || viewDashboard;
+    const routeChanged = state._rendered !== state.route;
+    renderNav();
+    $("#view").innerHTML = fn();
+
+    const active = $('.nav a[href="#/' + state.route + '"]');
+    if (active) active.classList.add("active");
+
+    if (routeChanged) { window.scrollTo(0, 0); state._rendered = state.route; }
+
+    if (state.route === "library" && state.param) {
+      const crop = cropOf(state.param);
+      const pest = pestById(state.param);
+      const KIND_SET = ["insect", "mite", "disease", "weed", "disorder", "beneficial"];
+      if (state.sub === "all") state.lib.kind = "all";
+      else if (KIND_SET.indexOf(state.sub) !== -1) state.lib.kind = state.sub;
+      if (pest) openModal(pestDetail(pest));
+      else if (crop) { state.lib.crop = crop.id; $("#view").innerHTML = viewLibrary(); }
+    }
+  }
+
+  /* ============================================================
+     VIEW: dashboard
+     ============================================================ */
+
+  function viewDashboard() {
+    const counts = {
+      insects: AGRO.pests.filter((p) => p.kind === "insect").length,
+      mites: AGRO.pests.filter((p) => p.kind === "mite").length,
+      diseases: AGRO.pests.filter((p) => p.kind === "disease").length,
+      weeds: AGRO.pests.filter((p) => p.kind === "weed").length,
+      disorders: AGRO.pests.filter((p) => p.kind === "disorder").length,
+      beneficials: AGRO.pests.filter((p) => p.kind === "beneficial").length
+    };
+
+    const cropTiles = AGRO.crops.map((c) => {
+      const n = AGRO.pests.filter((p) => p.crops && p.crops.includes(c.id) && p.kind !== "beneficial").length;
+      return '<a class="crop-tile" href="#/crops/' + c.id + '">' +
+        '<div class="ct-top"><span class="ct-name">' + esc(c.name) + "</span>" +
+        '<span class="crop-glyph">' + esc(c.mono) + "</span></div>" +
+        '<span class="ct-sci">' + esc(c.sci) + "</span>" +
+        '<span class="ct-meta">' + n + " reference entries · agronomy guide</span>" +
+        "</a>";
+    }).join("");
+
+    const recent = state.scout.slice(-3).reverse();
+
+    return '' +
+    '<section class="hero">' +
+      '<div class="eyebrow" style="color:#8fdcb4">Agronomy · entomology · plant protection</div>' +
+      "<h1>Diagnose the field, not the photograph.</h1>" +
+      "<p>A working reference for crop problems: a dichotomous insect key, per-crop agronomy guides, a pest, disease and disorder library with biology and thresholds, " +
+      "seasonal IPM programmes, resistance rotation, a scouting log and degree-day timing — built for Mediterranean and Saharan systems.</p>" +
+      '<div class="hero-actions">' +
+        '<a class="btn btn-light" href="#/diagnose">' + icon("diag") + "Start a diagnosis</a>" +
+        '<a class="btn" href="#/key">' + icon("key") + "Open the identification key</a>" +
+        '<a class="btn" href="#/crops">' + icon("leaf") + "Crop agronomy guides</a>" +
+        '<a class="btn" href="#/library">' + icon("book") + "Browse the library</a>" +
+      "</div>" +
+      '<div class="hero-chips">' +
+        '<span class="pill">' + AGRO.pests.length + " reference entries</span>" +
+        '<span class="pill">' + AGRO.pests.filter((p) => p.kind === "disorder").length + " abiotic disorders</span>" +
+        '<span class="pill">' + AGRO.crops.length + " crop guides</span>" +
+        '<span class="pill">IRAC · FRAC · HRAC rotation</span>' +
+        '<span class="pill">Offline</span>' +
+      "</div>" +
+    "</section>" +
+
+    '<div class="grid g4" style="margin-bottom:18px">' +
+      stat("Arthropod pests", counts.insects + counts.mites, "insects and mites") +
+      stat("Diseases, weeds &amp; disorders", counts.diseases + counts.weeds + counts.disorders, "pathogens, nematodes, abiotic causes") +
+      stat("Natural enemies", counts.beneficials, "predators and parasitoids") +
+      stat("Scouting records", state.scout.length, "stored on this device") +
+    "</div>" +
+
+    '<div class="grid g3" style="align-items:start">' +
+      '<div class="card pad-lg" style="grid-column:span 2">' +
+        '<div class="card-head"><h3>Start from the crop</h3><span class="spacer"></span>' +
+          '<span class="tiny muted">Agronomy guide, reference list and programme</span></div>' +
+        '<div class="grid g3">' + cropTiles + "</div>" +
+      "</div>" +
+
+      '<div class="stack">' +
+        '<div class="card">' +
+          '<div class="card-head"><h3>Method</h3></div>' +
+          '<ol class="small" style="margin:0;padding-left:18px;color:var(--ink-700);line-height:1.75">' +
+            "<li>Identify the organism, not the symptom.</li>" +
+            "<li>Match the life stage to the susceptible window.</li>" +
+            "<li>Compare against a threshold, not against fear.</li>" +
+            "<li>Prevent first; intervene selectively.</li>" +
+            "<li>Rotate the mode of action, always.</li>" +
+          "</ol>" +
+        "</div>" +
+        '<div class="card">' +
+          '<div class="card-head"><h3>Recent scouting</h3><span class="spacer"></span><a class="small" href="#/scout">All</a></div>' +
+          (recent.length
+            ? recent.map((s) =>
+                '<div style="display:flex;gap:8px;padding:7px 0;border-bottom:1px solid var(--line-2)">' +
+                "<div style=\"flex:1;min-width:0\"><div class=\"small strong\" style=\"overflow:hidden;text-overflow:ellipsis;white-space:nowrap\">" + esc(s.pest || "Untitled") + "</div>" +
+                '<div class="tiny muted">' + esc(cropName(s.crop)) + " · " + esc(s.date) + "</div></div>" +
+                '<div class="mono">' + esc(s.count) + "</div></div>").join("")
+            : '<p class="small muted">No records yet. <a href="#/scout">Add the first observation</a>.</p>') +
+        "</div>" +
+        '<div class="callout"><strong>Reminder.</strong> Product names and doses are deliberately absent. ' +
+          "The registered label — and the national authorisation — control every application.</div>" +
+      "</div>" +
+    "</div>";
+  }
+
+  function stat(k, v, s) {
+    return '<div class="stat"><div class="k">' + k + '</div><div class="v">' + v + '</div><div class="s">' + s + "</div></div>";
+  }
+
+  /* ============================================================
+     VIEW: diagnose
+     ============================================================ */
+
+  function diagSteps() {
+    return ["Crop", "Organ", "Symptoms", "Pattern", "Assessment"];
+  }
+
+  function viewDiagnose() {
+    const d = state.diag;
+    const steps = diagSteps();
+
+    const header =
+      '<div class="page-head"><div class="grow">' +
+        '<div class="eyebrow">Differential diagnosis</div>' +
+        "<h1>What is wrong with the crop?</h1>" +
+        '<p class="lede">A structured path from crop and organ to a ranked list of candidates. ' +
+        "This is a hypothesis generator, not a confirmation — the final step tells you what evidence would settle it.</p>" +
+      "</div>" +
+      '<div class="page-actions"><button class="btn btn-ghost" data-action="diag-reset">' + icon("rotate") + "Restart</button></div>" +
+      "</div>";
+
+    const stepper = '<div class="steps">' + steps.map((s, i) =>
+      '<div class="step ' + (i === d.step ? "on" : i < d.step ? "done" : "") + '">' +
+      '<span class="num">' + (i < d.step ? "✓" : i + 1) + "</span>" + s + "</div>").join("") + "</div>";
+
+    let body = "";
+
+    if (d.step === 0) {
+      body = '<div class="card pad-lg">' +
+        '<h2 style="margin-bottom:6px">Select the crop</h2>' +
+        '<p class="small muted" style="margin-bottom:16px">The candidate list is restricted to organisms recorded on this crop.</p>' +
+        '<div class="opt-grid">' + AGRO.crops.map((c) =>
+          '<button class="opt ' + (d.crop === c.id ? "on" : "") + '" data-action="diag-crop" data-id="' + c.id + '">' +
+          '<span class="o-t">' + esc(c.name) + "</span>" +
+          '<span class="o-s">' + esc(c.sci) + "</span></button>").join("") + "</div></div>";
+    }
+
+    if (d.step === 1) {
+      body = '<div class="card pad-lg">' +
+        '<h2 style="margin-bottom:6px">Where is the problem?</h2>' +
+        '<p class="small muted" style="margin-bottom:16px">Choose the organ carrying the most informative symptoms.</p>' +
+        '<div class="opt-grid">' + AGRO.organs.map((o) =>
+          '<button class="opt ' + (d.organ === o.id ? "on" : "") + '" data-action="diag-organ" data-id="' + o.id + '">' +
+          '<span class="o-t">' + o.label + "</span>" +
+          '<span class="o-s">' + o.hint + "</span></button>").join("") + "</div>" +
+        '<div class="row" style="margin-top:18px"><button class="btn" data-action="diag-back">' + icon("back") + "Back</button></div></div>";
+    }
+
+    if (d.step === 2) {
+      const list = d.allSyms ? AGRO.symptoms : AGRO.symptoms.filter((s) => s.group === d.organ);
+      body = '<div class="card pad-lg">' +
+        '<div class="row" style="margin-bottom:4px"><h2 style="margin:0">Select every symptom you can confirm</h2></div>' +
+        '<p class="small muted" style="margin-bottom:12px">Two or more symptoms sharply improve the ranking. Deselect anything you are unsure about.</p>' +
+        '<div class="row" style="margin-bottom:14px">' +
+          '<button class="btn btn-sm" data-action="diag-all-syms">' +
+            (d.allSyms ? "Show only this organ" : "Show symptoms from all organs") + "</button>" +
+          '<span class="tiny muted">' + (d.allSyms ? "All symptom groups displayed" : "Filtered to: " + esc((AGRO.organs.find((o) => o.id === d.organ) || {}).short || "")) + "</span>" +
+        "</div>" +
+        '<div class="opt-grid">' + list.map((s) =>
+          '<button class="opt ' + (d.symptoms.includes(s.id) ? "on" : "") + '" data-action="diag-symptom" data-id="' + s.id + '">' +
+          '<span class="o-t">' + esc(s.label) + "</span>" +
+          (d.allSyms ? '<span class="o-s">' + esc(s.group) + "</span>" : "") + "</button>").join("") + "</div>" +
+        (list.length === 0 ? '<p class="small muted">No symptom set for this organ; go back and choose another.</p>' : "") +
+        '<div class="row" style="margin-top:18px">' +
+          '<button class="btn" data-action="diag-back">' + icon("back") + "Back</button>" +
+          '<span class="spacer"></span>' +
+          '<button class="btn btn-primary" data-action="diag-next" ' + (d.symptoms.length ? "" : "disabled") + ">Continue " + icon("arrow") + "</button>" +
+        "</div></div>";
+    }
+
+    if (d.step === 3) {
+      body = '<div class="card pad-lg">' +
+        '<h2 style="margin-bottom:6px">Distribution in the field</h2>' +
+        '<p class="small muted" style="margin-bottom:16px">Useful context, and shown alongside the result as an interpretive note.</p>' +
+        '<div class="opt-grid">' + AGRO.patterns.map((p) =>
+          '<button class="opt ' + (d.pattern === p.id ? "on" : "") + '" data-action="diag-pattern" data-id="' + p.id + '">' +
+          '<span class="o-t">' + esc(p.label) + "</span>" +
+          '<span class="o-s">' + esc(p.hint) + "</span></button>").join("") + "</div>" +
+        '<div class="row" style="margin-top:18px">' +
+          '<button class="btn" data-action="diag-back">' + icon("back") + "Back</button>" +
+          '<span class="spacer"></span>' +
+          '<button class="btn btn-primary" data-action="diag-run">' + icon("search") + "Rank candidates</button>" +
+        "</div></div>";
+    }
+
+    if (d.step === 4) {
+      const results = diagnose();
+      const pattern = AGRO.patterns.find((p) => p.id === d.pattern);
+      const top = results.slice(0, 6);
+
+      body = '<div class="row" style="margin-bottom:14px">' +
+        '<div><div class="eyebrow" style="margin:0">Assessment</div>' +
+        '<h2 style="margin:2px 0 0">' + esc(cropName(d.crop)) + " · " + esc((AGRO.organs.find((o) => o.id === d.organ) || {}).label || "") + "</h2></div>" +
+        '<span class="spacer"></span>' +
+        '<button class="btn" data-action="diag-back">' + icon("back") + "Refine</button>" +
+        "</div>" +
+
+        (pattern ? '<div class="callout green" style="margin-bottom:14px"><strong>Field pattern: ' + esc(pattern.label) + ".</strong> " + esc(pattern.hint) + ".</div>" : "") +
+
+        '<div class="row-tight" style="margin-bottom:14px">' +
+          (AGRO.cropGuides[d.crop] ? '<a class="btn btn-sm" href="#/crops/' + d.crop + '">' + icon("leaf") + "Agronomy guide</a>" : "") +
+          '<a class="btn btn-sm" href="#/library/' + d.crop + '/all">' + icon("book") + "All entries for " + esc(cropName(d.crop)) + "</a>" +
+        "</div>" +
+
+        (top.length ? top.map((r) => resultRow(r)).join("") :
+          '<div class="empty"><h3>No candidate matched</h3><p class="small">Try a different organ or fewer symptoms. The library may still describe the organism.</p></div>') +
+
+        '<div class="card" style="margin-top:18px">' +
+          '<div class="card-head"><h3>How to confirm</h3></div>' +
+          '<ul class="small" style="margin:0;padding-left:18px;color:var(--ink-700);line-height:1.8">' +
+            "<li><strong>Insects and mites:</strong> rear larvae to adults, photograph wing venation and antennae, or use DNA barcoding (COI) when morphology is ambiguous.</li>" +
+            "<li><strong>Diseases:</strong> laboratory isolation, ELISA or PCR. Foliar symptoms alone rarely justify a species-level diagnosis.</li>" +
+            "<li><strong>Abiotic causes:</strong> soil and water analysis, plus a check of the spray and fertiliser record for the last 30 days.</li>" +
+            "<li><strong>Anything quarantine-relevant:</strong> contact the national plant protection service before acting.</li>" +
+          "</ul></div>" +
+
+        '<div class="callout" style="margin-top:16px"><strong>Confidence is not certainty.</strong> ' +
+          "Percentage scores express how well the observed characters fit each candidate, not the probability that the diagnosis is correct.</div>";
+    }
+
+    return header + stepper + body;
+  }
+
+  function resultRow(r) {
+    const p = r.p;
+    const lvl = r.pct >= 75 ? "high" : r.pct >= 55 ? "mid" : "low";
+    const conf = r.pct >= 75 ? "High fit" : r.pct >= 55 ? "Moderate fit" : "Low fit";
+    const why = r.why.slice(0, 4).map((w) => '<span class="pill">' + esc(w) + "</span>").join("");
+    const cover = r.selN ? " · " + r.hits + "/" + r.selN + " symptoms" : "";
+    return '<div class="result lvl-' + lvl + '" role="button" tabindex="0" data-action="open-pest" data-id="' + p.id + '">' +
+      '<div class="bar"></div>' +
+      "<div><h4>" + esc(p.name) + "</h4>" +
+      '<div class="res-sub"><span class="sci">' + esc(p.sci) + "</span> · " + esc(KIND_LABEL[p.kind] || p.kind) + esc(cover) + "</div>" +
+      '<div class="res-why">' + why + "</div></div>" +
+      '<div class="res-score"><div class="n">' + r.pct + '%</div><div class="l">' + conf + "</div></div>" +
+      "</div>";
+  }
+
+  function diagnose() {
+    const d = state.diag;
+    if (!d.crop) return [];
+    const selected = new Set(d.symptoms);
+    const selN = selected.size;
+    const out = [];
+
+    AGRO.pests.forEach((p) => {
+      if (p.kind === "beneficial") return;
+      if (!p.crops || !p.crops.includes(d.crop)) return;
+
+      const hits = (p.symptoms || []).filter((s) => selected.has(s));
+      if (selN && hits.length === 0) return; // no symptomatic evidence at all
+
+      const symRatio = selN ? hits.length / selN : 0.5;
+      const organs = p.organs || [];
+      const organF = organs.includes(d.organ) ? 1 : organs.includes("whole") ? 0.6 : 0.3;
+
+      // 70 % symptom fit, 20 % organ fit, 10 % host confirmation
+      let pct = Math.round(100 * (0.7 * symRatio + 0.2 * organF + 0.1));
+
+      // A single symptom cannot support high confidence
+      if (selN < 2) pct = Math.min(pct, 74);
+
+      const why = hits.map(symLabel);
+      if (organF === 1) why.unshift("organ match");
+
+      // Documented field-pattern nudge for abiotic / nutritional disorders.
+      // A uniform, patchy-by-drainage or row-regular distribution is more
+      // consistent with soil, water, climate or spray causes than with a
+      // focal, contagious pest or pathogen. This is context, not proof.
+      if (p.kind === "disorder" && d.pattern) {
+        const fits = {
+          whole:    ["uniform distribution", "abiotic / nutritional pattern"],
+          lowspots: ["wet-zone pattern", "abiotic / nutritional pattern"],
+          rows:     ["row / block pattern", "abiotic / nutritional pattern"],
+          patchy:   ["soil-linked pattern"]
+        }[d.pattern];
+        if (fits) why.push.apply(why, fits);
+      }
+
+      out.push({ p: p, pct: pct, why: why, hits: hits.length, selN: selN });
+    });
+
+    out.sort((a, b) => b.pct - a.pct || b.p.severity - a.p.severity);
+    return out;
+  }
+
+  /* ============================================================
+     VIEW: crop agronomy guides  (section 6)
+     ============================================================ */
+
+  function guideP(txt) { return "<p>" + esc(txt) + "</p>"; }
+  function guideList(arr) {
+    return "<ul>" + (arr || []).map((x) => "<li>" + esc(x) + "</li>").join("") + "</ul>";
+  }
+  function guideSec(title, bodyHtml) {
+    return '<div class="sec"><h4>' + title + "</h4>" + bodyHtml + "</div>";
+  }
+  function guideRows(rows) {
+    return '<div class="table-wrap"><table><tbody>' +
+      rows.filter((r) => r[1]).map((r) =>
+        "<tr><td style=\"width:150px\"><strong>" + esc(r[0]) + "</strong></td><td>" + esc(r[1]) + "</td></tr>").join("") +
+      "</tbody></table></div>";
+  }
+
+  function viewCrops() {
+    const cropId = state.param && cropOf(state.param) && AGRO.cropGuides[state.param]
+      ? state.param : (state.cropGuide && AGRO.cropGuides[state.cropGuide] ? state.cropGuide : "tomato");
+    state.cropGuide = cropId;
+
+    const guideCrops = AGRO.crops.filter((c) => AGRO.cropGuides[c.id]);
+    const selector = '<div class="toolbar">' +
+      '<select data-action="crops-crop" aria-label="Choose crop">' +
+        guideCrops.map((c) =>
+          '<option value="' + c.id + '"' + (c.id === cropId ? " selected" : "") + ">" + esc(c.name) + "</option>").join("") +
+      "</select>" +
+      '<span class="small muted">Climate, soil, varieties, planting, water, nutrition, harvest and storage</span></div>';
+
+    const g = AGRO.cropGuides[cropId];
+    const crop = cropOf(cropId);
+
+    if (!g) {
+      return '<div class="page-head"><div class="grow">' +
+          '<div class="eyebrow">Crop agronomy</div><h1>Agronomy guides</h1></div></div>' +
+        selector +
+        '<div class="empty"><h3>No agronomy guide for this crop yet</h3>' +
+        '<p class="small">Choose another crop from the selector.</p></div>';
+    }
+
+    const fieldCount = AGRO.pests.filter((p) => p.crops && p.crops.includes(cropId) && p.kind !== "beneficial").length;
+    const disorderCount = AGRO.pests.filter((p) => p.crops && p.crops.includes(cropId) && p.kind === "disorder").length;
+    const plant = g.planting || {};
+
+    const head = '<div class="page-head"><div class="grow">' +
+        '<div class="eyebrow">Crop agronomy · section 6</div>' +
+        "<h1>" + esc(crop ? crop.name : cropId) + (crop ? ' <span class="dh-sci" style="font-size:16px">' + esc(crop.sci) + "</span>" : "") + "</h1>" +
+        '<p class="lede">The agronomic context that decides whether a crop problem is even possible: climate, soil, cultivar, planting date, ' +
+        "water and nutrition. Manage these first; a diagnostic list without them is guesswork.</p>" +
+      "</div>" +
+      '<div class="page-actions"><button class="btn btn-ghost" data-action="print">' + icon("print") + "Print guide</button></div>" +
+      "</div>";
+
+    const indicatorCallout = '<div class="callout" style="margin-bottom:16px">' +
+      "<strong>Figures are indicative.</strong> Planting windows, densities and thresholds below are starting points drawn from common practice for " +
+      "Mediterranean and North African systems. They shift with region, altitude, cultivar, market and water availability — calibrate against your local " +
+      "advisory service before planning a season. No pesticide, dose or registration appears here.</div>";
+
+    const main = '<div class="card pad-lg">' +
+        guideSec("Climate requirements", guideP(g.climate)) +
+        guideSec("Soil and site", guideP(g.soil)) +
+        guideSec("Variety and cultivar choice", guideList(g.varieties)) +
+        guideSec("Planting", guideRows([
+          ["Window", plant.window], ["Method", plant.method], ["Notes", plant.notes]
+        ])) +
+        guideSec("Plant density and spacing", guideP(g.density)) +
+        guideSec("Irrigation", guideP(g.irrigation)) +
+        guideSec("Nutrition", guideList(g.nutrition)) +
+        guideSec("Harvest", guideP(g.harvest)) +
+        guideSec("Storage and postharvest", guideP(g.storage)) +
+        guideSec("Rotation and cropping sequence", guideP(g.rotation)) +
+      "</div>";
+
+    const KIND_ORDER = { insect: 0, mite: 1, disease: 2, weed: 3, disorder: 4, beneficial: 5 };
+    const cropEntries = AGRO.pests
+      .filter((p) => (p.crops || []).includes(cropId))
+      .sort((a, b) => (KIND_ORDER[a.kind] - KIND_ORDER[b.kind]) ||
+        (b.severity - a.severity) || a.name.localeCompare(b.name));
+
+    const entriesCard = '<div class="card pad-lg" style="margin-top:16px">' +
+        '<div class="card-head"><h3>Reference entries for this crop</h3><span class="spacer"></span>' +
+          '<span class="tiny muted">' + cropEntries.length + " profiles · tap to open</span></div>" +
+        (cropEntries.length
+          ? '<div class="lib-grid">' + cropEntries.map(libCard).join("") + "</div>"
+          : '<p class="small muted">No reference entries are recorded on this crop yet.</p>') +
+      "</div>";
+
+    const side = '<div class="stack">' +
+        '<div class="card">' +
+          '<div class="card-head"><h3>Key risks</h3></div>' +
+          guideList(g.keyRisks) +
+        "</div>" +
+        '<div class="card">' +
+          '<div class="card-head"><h3>Regional note</h3></div>' +
+          '<p class="small" style="color:var(--ink-700)">' + esc(g.regionNote) + "</p>" +
+        "</div>" +
+        '<div class="card">' +
+          '<div class="card-head"><h3>Linked tools</h3></div>' +
+          '<div class="stack" style="gap:8px">' +
+            '<a class="btn btn-sm" href="#/library/' + cropId + '/all">' + icon("book") + "All reference entries (" + fieldCount + ")</a>" +
+            (disorderCount ? '<a class="btn btn-sm" href="#/library/' + cropId + '/disorder">' + icon("leaf") + "Disorders for this crop (" + disorderCount + ")</a>" : "") +
+            '<a class="btn btn-sm" href="#/ipm/' + cropId + '">' + icon("ipm") + "IPM programme</a>" +
+            '<a class="btn btn-sm" href="#/diagnose">' + icon("diag") + "Diagnose a problem</a>" +
+            '<a class="btn btn-sm" href="#/gdd">' + icon("gdd") + "Degree-day timing</a>" +
+          "</div>" +
+        "</div>" +
+        '<div class="callout"><strong>Observation before interpretation.</strong> ' +
+          "A symptom on a leaf is an observation; the cause behind it is an interpretation. Confirm with soil, water or plant analysis, or with a check of " +
+          "the recent spray and fertiliser record, before changing the programme.</div>" +
+      "</div>";
+
+    return head + selector + indicatorCallout +
+      '<div class="grid g3" style="align-items:start">' +
+        '<div style="grid-column:span 2">' + main + entriesCard + "</div>" +
+        side +
+      "</div>";
+  }
+
+  /* ============================================================
+     VIEW: library
+     ============================================================ */
+
+  function viewLibrary() {
+    const f = state.lib;
+    const q = f.q.trim().toLowerCase();
+
+    const items = AGRO.pests.filter((p) => {
+      if (f.kind !== "all" && p.kind !== f.kind) return false;
+      if (f.crop !== "all" && !(p.crops || []).includes(f.crop)) return false;
+      if (q) {
+        const hay = [p.name, p.sci, p.fr, p.family, p.order, p.tagline].join(" ").toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+
+    const kinds = [
+      ["all", "All"], ["insect", "Insects"], ["mite", "Mites"],
+      ["disease", "Diseases"], ["weed", "Weeds"], ["disorder", "Disorders"],
+      ["beneficial", "Beneficials"]
+    ];
+
+    // A search for a crop name should reach the crop agronomy guide as well as
+    // the pest and disease entries, otherwise "Search … or crop" is misleading.
+    const guideHits = q ? AGRO.crops.filter((c) => AGRO.cropGuides[c.id] &&
+      (c.name + " " + c.sci).toLowerCase().includes(q)) : [];
+    const guideStrip = guideHits.length ?
+      '<div style="margin-bottom:16px">' +
+        '<div class="tiny strong" style="letter-spacing:.1em;text-transform:uppercase;color:var(--green-700);margin-bottom:8px">Crop agronomy guides</div>' +
+        '<div class="grid g3">' + guideHits.map((c) =>
+          '<a class="crop-tile" href="#/crops/' + c.id + '">' +
+            '<div class="ct-top"><span class="ct-name">' + esc(c.name) + "</span>" +
+            '<span class="crop-glyph">' + esc(c.mono) + "</span></div>" +
+            '<span class="ct-sci">' + esc(c.sci) + "</span>" +
+            '<span class="ct-meta">Open the agronomy guide</span></a>').join("") +
+        "</div></div>" : "";
+
+    return '<div class="page-head"><div class="grow">' +
+        '<div class="eyebrow">Reference library</div>' +
+        "<h1>Pest, disease, disorder and weed profiles</h1>" +
+        '<p class="lede">Biology, damage, monitoring, thresholds, IPM and chemistry by mode of action. ' +
+        "Abiotic and nutritional disorders are included, because a ranked list of pests alone is a misleading list. " +
+        "Every entry states what is known, what is uncertain, and what would confirm the diagnosis.</p>" +
+      "</div></div>" +
+
+      '<div class="toolbar">' +
+        '<div class="seg">' + kinds.map((k) =>
+          '<button data-action="lib-kind" data-id="' + k[0] + '" class="' + (f.kind === k[0] ? "on" : "") + '">' + k[1] + "</button>").join("") + "</div>" +
+        '<select data-action="lib-crop" aria-label="Filter by crop">' +
+          '<option value="all">All crops</option>' +
+          AGRO.crops.map((c) => '<option value="' + c.id + '"' + (f.crop === c.id ? " selected" : "") + ">" + esc(c.name) + "</option>").join("") +
+        "</select>" +
+        '<span class="spacer"></span>' +
+        '<span class="small muted">' + items.length + " of " + AGRO.pests.length + " entries</span>" +
+      "</div>" +
+
+      guideStrip +
+
+      (items.length ?
+        '<div class="lib-grid">' + items.map(libCard).join("") + "</div>" :
+        (guideHits.length
+          ? '<p class="small muted">No pest, disease or weed entry matches this search — the crop guide above is the relevant result.</p>'
+          : '<div class="empty"><h3>Nothing matches these filters</h3><p class="small">Clear the crop filter or search a different term.</p></div>'));
+  }
+
+  function libCard(p) {
+    return '<article class="lib-card" role="button" tabindex="0" data-action="open-pest" data-id="' + p.id + '">' +
+      '<div class="lc-top"><div style="flex:1;min-width:0">' +
+        '<div class="lc-name">' + esc(p.name) + "</div>" +
+        '<div class="lc-sci">' + esc(p.sci) + "</div>" +
+      "</div>" + sevBar(p.severity) + "</div>" +
+      '<div class="lc-tag">' + esc(p.tagline) + "</div>" +
+      '<div class="lc-foot">' + kindPill(p) +
+        (p.order ? '<span class="pill pill-ghost">' + esc(p.order) + "</span>" : "") +
+        (p.quarantine ? '<span class="pill pill-red">Quarantine</span>' : "") +
+      "</div></article>";
+  }
+
+  function pestDetail(p) {
+    const ipm = p.ipm || {};
+    const isDisorder = p.kind === "disorder";
+    const list = (arr) => arr && arr.length ? "<ul>" + arr.map((x) => "<li>" + esc(x) + "</li>").join("") + "</ul>" : '<p class="small muted">No specific measures recorded.</p>';
+
+    const chem = (p.chem || []).length ?
+      '<div class="table-wrap" style="border:0"><table class="chem-table"><thead><tr>' +
+      (isDisorder ? "<th>Amendment / measure</th><th>Type</th><th>Note</th>" : "<th>Active ingredient</th><th>MoA</th><th>Note</th>") +
+      "</tr></thead><tbody>" +
+      p.chem.map((c) => "<tr><td><strong>" + esc(c.ai) + "</strong></td><td><span class=\"moa-code\">" + esc(c.moa) + "</span></td><td class=\"small\">" + esc(c.note) + "</td></tr>").join("") +
+      "</tbody></table></div>"
+      : '<p class="small muted">No corrective measure is presented for this entry.</p>';
+
+    const chemNote = isDisorder ?
+      '<div class="callout" style="margin-top:12px"><strong>Amendments are not pesticides, but they are still regulated.</strong> ' +
+      "Rates, permitted sources and application restrictions vary by country and by product. Soil and water analysis should drive every amendment decision; " +
+      "a symptom alone does not justify an application.</div>"
+      :
+      '<div class="callout red" style="margin-top:12px"><strong>Registration is national.</strong> ' +
+      "Active ingredients and MoA groups are given for rotation planning. Approved crops, doses, preharvest intervals and re-entry intervals " +
+      "must be read from the product label authorised in your country. Nothing here overrides that label.</div>";
+
+    const look = (p.lookalikes || []).length ?
+      '<div class="table-wrap"><table><thead><tr><th>' + (isDisorder ? "Confusable cause" : "Confusable species") + '</th><th>How to separate</th></tr></thead><tbody>' +
+      p.lookalikes.map((l) => "<tr><td><strong>" + esc(l.n) + "</strong></td><td class=\"small\">" + esc(l.d) + "</td></tr>").join("") +
+      "</tbody></table></div>" : "";
+
+    const quad = isDisorder
+      ? { a: "Corrective agronomy", b: "Soil health &amp; biostimulants", c: "Physical measures", d: "Diagnostics &amp; monitoring" }
+      : { a: "Cultural", b: "Biological", c: "Mechanical / physical", d: "Biotechnical" };
+
+    return '<div class="detail-head">' +
+        '<div class="row-tight" style="margin-bottom:8px">' + kindPill(p) +
+          (p.quarantine ? '<span class="pill pill-red">Quarantine / reportable</span>' : "") +
+          '<span class="pill pill-ghost">Severity ' + p.severity + "/5</span></div>" +
+        '<h2 id="modalTitle">' + esc(p.name) + "</h2>" +
+        '<div class="dh-sci">' + esc(p.sci) + "</div>" +
+        (p.fr ? '<div class="small muted" style="margin-top:4px">French: ' + esc(p.fr) + "</div>" : "") +
+        '<div class="dh-meta">' +
+          ((p.crops || []).map((c) => AGRO.cropGuides[c]
+            ? '<a class="pill pill-green" data-action="open-crop" data-id="' + c + '" title="Open the crop agronomy guide">' + esc(cropName(c)) + "</a>"
+            : '<span class="pill pill-green">' + esc(cropName(c)) + "</span>").join("")) +
+        "</div>" +
+      "</div>" +
+
+      '<div class="facts">' +
+        fact("Group", p.kind === "disease" ? (p.type || "Pathogen") : (KIND_LABEL[p.kind] || p.kind)) +
+        (p.type && p.kind === "disorder" ? fact("Nature", p.type) : "") +
+        (p.order ? fact("Order", p.order) : "") +
+        (p.family ? fact("Family", p.family) : "") +
+        (p.stage ? fact("Key stage", p.stage) : "") +
+        fact("Severity", p.severity + " / 5") +
+        (p.role ? fact("Ecological role", p.role) : "") +
+      "</div>" +
+
+      '<div class="sec"><h4>Summary</h4><p>' + esc(p.tagline) + "</p></div>" +
+      '<div class="sec"><h4>' + (isDisorder ? "Mechanism and appearance" : "Biology and cycle") + '</h4><p>' + esc(p.bio) + "</p></div>" +
+      '<div class="sec"><h4>' + (isDisorder ? "Yield and quality impact" : "Damage and economic importance") + '</h4><p>' + esc(p.damage) + "</p></div>" +
+      (p.favours ? '<div class="sec"><h4>' + (isDisorder ? "Conditions that cause it" : "Conditions that favour it") + '</h4><p>' + esc(p.favours) + "</p></div>" : "") +
+      '<div class="sec"><h4>' + (isDisorder ? "How to measure and confirm" : "Monitoring") + '</h4><p>' + esc(p.monitoring || "No specific protocol recorded.") + "</p></div>" +
+      (p.threshold ? '<div class="callout green"><strong>' + (isDisorder ? "Interpretation." : "Action threshold.") + "</strong> " + esc(p.threshold) + "</div>" : "") +
+      (p.dz ? '<div class="sec"><h4>Status in Algeria</h4><p>' + esc(p.dz) + "</p></div>" : "") +
+
+      '<hr class="sep">' +
+      '<div class="sec"><h4>' + (isDisorder ? "Corrective and preventive measures" : "Integrated management") + '</h4>' +
+        '<div class="grid g2" style="gap:16px">' +
+          "<div><div class=\"tiny strong\" style=\"margin-bottom:4px\">" + quad.a + "</div>" + list(ipm.cultural) + "</div>" +
+          "<div><div class=\"tiny strong\" style=\"margin-bottom:4px\">" + quad.b + "</div>" + list(ipm.biological) + "</div>" +
+          "<div><div class=\"tiny strong\" style=\"margin-bottom:4px\">" + quad.c + "</div>" + list(ipm.mechanical) + "</div>" +
+          "<div><div class=\"tiny strong\" style=\"margin-bottom:4px\">" + quad.d + "</div>" + list(ipm.biotech) + "</div>" +
+        "</div>" +
+      "</div>" +
+
+      '<div class="sec"><h4>' + (isDisorder ? "Amendment and correction options" : "Chemical options by mode of action") + '</h4>' + chem + chemNote + "</div>" +
+
+      (p.resistance && !isDisorder ? '<div class="sec"><h4>Resistance management</h4><p>' + esc(p.resistance) + "</p></div>" : "") +
+      (look ? '<div class="sec"><h4>Differential diagnosis</h4>' + look + "</div>" : "") +
+
+      '<hr class="sep">' +
+      '<div class="row"><span class="tiny muted">Reference entry ' + esc(p.id) + " · dataset " + AGRO.meta.revision + "</span>" +
+        '<span class="spacer"></span>' +
+        '<button class="btn btn-sm" data-action="print">' + icon("print") + "Print</button></div>";
+  }
+
+  function fact(k, v) {
+    return '<div class="fact"><div class="fk">' + esc(k) + '</div><div class="fv">' + esc(v) + "</div></div>";
+  }
+
+  /* ============================================================
+     VIEW: identification key
+     ============================================================ */
+
+  function viewKey() {
+    const node = AGRO.keyNodes[state.keyNode];
+
+    const trail = state.keyTrail.length ?
+      '<div class="trail">' + state.keyTrail.map((t, i) =>
+        '<span class="t">' + (i + 1) + ". <b>" + esc(t) + "</b></span>").join('<span class="t">›</span>') + "</div>" : "";
+
+    if (!node) {
+      const taxon = AGRO.taxa[state.keyNode];
+      if (!taxon) return "<p>Key error.</p>";
+      return keyResult(taxon);
+    }
+
+    return '<div class="page-head"><div class="grow">' +
+        '<div class="eyebrow">Dichotomous key</div>' +
+        "<h1>Identify the arthropod</h1>" +
+        '<p class="lede">A field key to the orders and families that matter in agriculture. ' +
+        "It is written for adults and common larval forms; where a character is ambiguous, the key tells you what to photograph instead of guessing.</p>" +
+      "</div>" +
+      '<div class="page-actions"><button class="btn btn-ghost" data-action="key-reset">' + icon("rotate") + "Start over</button></div></div>" +
+
+      '<div class="key-wrap">' + trail +
+      '<div class="key-card">' +
+        '<div class="key-q"><span class="cn">Couplet ' + node.no + "</span>" + esc(node.q) + "</div>" +
+        '<div class="key-opts">' + node.opts.map((o, i) =>
+          '<button class="key-opt" data-action="key-opt" data-next="' + o.next + '" data-label="' + esc(o.label) + '">' +
+            '<span class="k-let">' + String.fromCharCode(97 + i) + "</span>" +
+            '<span class="k-txt">' + esc(o.label) + (o.hint ? "<em>" + esc(o.hint) + "</em>" : "") + "</span>" +
+          "</button>").join("") + "</div>" +
+        (node.note ? '<div class="callout" style="margin-top:16px">' + esc(node.note) + "</div>" : "") +
+      "</div>" +
+      (state.keyTrail.length ? '<div class="row" style="margin-top:14px"><button class="btn" data-action="key-back">' + icon("back") + "Previous couplet</button></div>" : "") +
+      "</div>";
+  }
+
+  function keyResult(t) {
+    return '<div class="page-head"><div class="grow">' +
+        '<div class="eyebrow">Identification outcome</div>' +
+        "<h1>Identification outcome</h1>" +
+      "</div></div>" +
+      '<div class="key-wrap"><div class="key-card taxon-out">' +
+        '<div class="taxon-rank">' + esc(t.rank) + "</div>" +
+        '<h2 style="font-size:28px;margin:4px 0 2px">' + esc(t.name) + "</h2>" +
+        '<div class="dh-sci" style="font-family:var(--serif);font-style:italic;color:var(--ink-500);margin-bottom:14px">' + esc(t.sci) + "</div>" +
+        '<div class="chip-row" style="margin-bottom:16px">' +
+          '<span class="pill pill-green">' + esc(t.role) + "</span>" +
+          '<span class="pill pill-ghost">' + t.diag.length + " diagnostic characters</span></div>" +
+
+        '<div class="sec"><h4>Diagnostic characters</h4><ul>' +
+          t.diag.map((d) => "<li>" + esc(d) + "</li>").join("") + "</ul></div>" +
+
+        (t.families && t.families.length ?
+          '<div class="sec"><h4>Families to consider</h4><div class="table-wrap"><table><thead><tr><th>Family</th><th>Field note</th></tr></thead><tbody>' +
+          t.families.map((f) => "<tr><td><strong>" + esc(f.n) + "</strong></td><td class=\"small\">" + esc(f.d) + "</td></tr>").join("") +
+          "</tbody></table></div></div>" : "") +
+
+        '<div class="callout"><strong>Before you act.</strong> ' + esc(t.caution) + "</div>" +
+
+        '<div class="row" style="margin-top:20px">' +
+          '<button class="btn" data-action="key-back">' + icon("back") + "Previous couplet</button>" +
+          '<button class="btn btn-ghost" data-action="key-reset">' + icon("rotate") + "Start over</button>" +
+          '<span class="spacer"></span>' +
+          '<a class="btn btn-primary" href="#/library">' + icon("book") + "Open the library</a>" +
+        "</div>" +
+      "</div></div>";
+  }
+
+  /* ============================================================
+     VIEW: IPM planner
+     ============================================================ */
+
+  function viewIpm() {
+    const cropId = state.param && cropOf(state.param) ? state.param : (state.ipmCrop || "tomato");
+    state.ipmCrop = cropId;
+    const prog = AGRO.ipmPrograms[cropId];
+    const crop = cropOf(cropId);
+
+    const selector = '<div class="toolbar">' +
+      '<select data-action="ipm-crop" aria-label="Choose crop">' +
+      AGRO.crops.filter((c) => c.id !== "stored").map((c) =>
+        '<option value="' + c.id + '"' + (c.id === cropId ? " selected" : "") + ">" + esc(c.name) + "</option>").join("") +
+      "</select>" +
+      '<span class="small muted">Programme adapts to the crop phenology</span>' +
+      '<span class="spacer"></span>' +
+      (AGRO.cropGuides[cropId] ? '<a class="btn btn-sm" href="#/crops/' + cropId + '">' + icon("leaf") + "Agronomy guide</a>" : "") +
+      "</div>";
+
+    const stages = prog ? prog.stages : AGRO.ipmGeneric;
+    const note = prog ? prog.note : "No crop-specific programme is stored yet — the generic framework applies.";
+
+    const timeline = '<div class="timeline">' + stages.map((s) =>
+      '<div class="tl-item">' +
+        '<div class="tl-stage">' + esc(s.stage) + "</div>" +
+        '<div class="tl-actions">' + s.actions.map((a) =>
+          '<div class="tl-act"><span class="tag tag-' + tagClass(a.type) + '">' + esc(a.type) + "</span>" +
+          "<span>" + esc(a.text) + "</span></div>").join("") + "</div>" +
+      "</div>").join("") + "</div>";
+
+    return '<div class="page-head"><div class="grow">' +
+        '<div class="eyebrow">Integrated pest management</div>' +
+        "<h1>Seasonal programme" + (crop ? " · " + esc(crop.name) : "") + "</h1>" +
+        '<p class="lede">A sequence, not a spray list: prevention, monitoring, biological and cultural measures first, chemistry only where a threshold justifies it.</p>' +
+      "</div></div>" +
+      selector +
+      '<div class="callout green" style="margin-bottom:16px">' + esc(note) + "</div>" +
+      '<div class="grid g3" style="align-items:start">' +
+        '<div class="card pad-lg" style="grid-column:span 2">' + timeline + "</div>" +
+        '<div class="card"><div class="card-head"><h3>Principles applied</h3></div>' +
+          AGRO.ipmPrinciples.map((p) =>
+            '<div style="display:flex;gap:9px;padding:8px 0;border-bottom:1px solid var(--line-2);align-items:flex-start">' +
+              '<span class="moa-code" style="min-width:22px">' + p.n + "</span>" +
+              '<div><div class="small strong">' + esc(p.t) + "</div>" +
+              '<div class="tiny muted">' + esc(p.d) + "</div></div></div>").join("") +
+        "</div>" +
+      "</div>";
+  }
+
+  function tagClass(t) {
+    const map = { prevent: "prevent", monitor: "monitor", biological: "bio", cultural: "cult", mechanical: "mech", chemical: "chem" };
+    return map[t] || "monitor";
+  }
+
+  /* ============================================================
+     VIEW: rotation
+     ============================================================ */
+
+  function viewRotation() {
+    const groups = AGRO.moa;
+    const schemes = ["IRAC", "FRAC", "HRAC"];
+    const chosen = groups.filter((g) => state.rot.has(g.scheme + ":" + g.code));
+    const highRisk = chosen.filter((g) => g.risk === "high").length;
+
+    const sections = schemes.map((s) => {
+      const list = groups.filter((g) => g.scheme === s);
+      return '<div class="card" style="margin-bottom:14px">' +
+        '<div class="card-head"><h3>' + s + " groups</h3><span class=\"spacer\"></span>" +
+          '<span class="tiny muted">' + (s === "IRAC" ? "insecticides & acaricides" : s === "FRAC" ? "fungicides" : "herbicides") + "</span></div>" +
+        list.map((g) => {
+          const key = g.scheme + ":" + g.code;
+          return '<div class="moa-row">' +
+            '<span class="moa-code">' + esc(g.code) + "</span>" +
+            '<div style="flex:1;min-width:0"><div class="small strong">' + esc(g.name) + "</div>" +
+            '<div class="tiny muted">' + esc(g.examples) + "</div></div>" +
+            '<span class="risk-badge risk-' + g.risk + '">' + g.risk + "</span>" +
+            '<label class="switch"><input type="checkbox" data-action="rot-toggle" data-key="' + key + '"' + (state.rot.has(key) ? " checked" : "") + "></label>" +
+          "</div>";
+        }).join("") + "</div>";
+    }).join("");
+
+    const advice = chosen.length ? chosen.map((g) => {
+      const same = groups.filter((x) => x.scheme === g.scheme && x.code === g.code).length;
+      return '<div style="padding:10px 0;border-bottom:1px solid var(--line-2)">' +
+        '<div class="row-tight"><span class="moa-code">' + esc(g.scheme + " " + g.code) + "</span>" +
+        '<span class="small strong">' + esc(g.name) + "</span>" +
+        '<span class="spacer"></span><span class="risk-badge risk-' + g.risk + '">' + g.risk + " risk</span></div>" +
+        '<div class="small" style="margin-top:4px;color:var(--ink-700)">' + esc(g.note) + "</div>" +
+        '<div class="tiny muted" style="margin-top:4px">Typical actives: ' + esc(g.examples) + "</div>" +
+      "</div>";
+    }).join("") : '<p class="small muted">Select the groups you have applied this season to see the rotation logic.</p>';
+
+    return '<div class="page-head"><div class="grow">' +
+        '<div class="eyebrow">Resistance management</div>' +
+        "<h1>Mode-of-action rotation</h1>" +
+        '<p class="lede">Resistance is a numbers game: every application of a single-site mode of action selects survivors. ' +
+        "Track the groups used, then force the programme to change group before the next generation.</p>" +
+      "</div></div>" +
+
+      '<div class="grid g3" style="align-items:start">' +
+        '<div style="grid-column:span 2">' + sections + "</div>" +
+        '<div class="card" style="position:sticky;top:70px">' +
+          '<div class="card-head"><h3>Rotation rules</h3><span class="spacer"></span>' +
+            '<span class="pill ' + (highRisk > 3 ? "pill-red" : highRisk ? "pill-amber" : "pill-green") + '">' + highRisk + " high-risk</span></div>" +
+          '<ul class="small" style="margin:0 0 14px;padding-left:18px;color:var(--ink-700);line-height:1.8">' +
+            "<li>Never apply the same group twice in succession to the same generation.</li>" +
+            "<li>Limit single-site groups to 1–2 applications per season, 2–3 for fungicides.</li>" +
+            "<li>Always pair a single-site fungicide with a multi-site partner (M03, M01).</li>" +
+            "<li>Rotate within the target spectrum: do not rotate a caterpillar product with a mite product.</li>" +
+            "<li>Record every application with date, group, rate and target.</li>" +
+          "</ul>" +
+          '<div class="small strong" style="margin-bottom:6px">Selected this season</div>' +
+          advice +
+        "</div>" +
+      "</div>" +
+      '<div class="callout red" style="margin-top:16px"><strong>Legal control.</strong> ' +
+        "Rotation advice does not authorise any product. Confirm the authorised crop, target, dose and interval on the national label before application.</div>";
+  }
+
+  /* ============================================================
+     VIEW: scouting log
+     ============================================================ */
+
+  function viewScout() {
+    const rows = state.scout.slice().sort((a, b) => (a.date < b.date ? 1 : -1));
+    const counts = rows.slice(0, 14).reverse().map((r) => Number(r.count) || 0);
+    const maxC = Math.max.apply(null, counts.concat([1]));
+
+    const chart = counts.length ?
+      '<div class="bars" style="height:72px;margin-top:8px">' +
+        counts.map((c) => '<div class="b" style="height:' + Math.max(4, Math.round((c / maxC) * 100)) + '%" title="' + c + '"></div>').join("") +
+      "</div>" : "";
+
+    const table = rows.length ?
+      '<div class="table-wrap"><table><thead><tr>' +
+        "<th>Date</th><th>Crop</th><th>Observation</th><th>Unit</th><th class=\"num\">Count</th><th>Notes</th><th></th>" +
+      "</tr></thead><tbody>" +
+      rows.map((r, i) =>
+        "<tr><td class=\"nowrap\">" + esc(r.date) + "</td>" +
+        "<td>" + esc(cropName(r.crop)) + "</td>" +
+        "<td><strong>" + esc(r.pest || "—") + "</strong></td>" +
+        "<td class=\"small muted\">" + esc(r.unit || "—") + "</td>" +
+        '<td class="num mono">' + esc(r.count) + "</td>" +
+        '<td class="small">' + esc(r.notes || "") + "</td>" +
+        '<td><button class="btn btn-sm btn-danger" data-action="scout-del" data-id="' + esc(r.id) + '" aria-label="Delete">' + icon("trash") + "</button></td></tr>").join("") +
+      "</tbody></table></div>" : "";
+
+    const crops = AGRO.crops.map((c) => '<option value="' + c.id + '">' + esc(c.name) + "</option>").join("");
+    const units = AGRO.thresholdUnits.map((u) => "<option>" + esc(u) + "</option>").join("");
+
+    return '<div class="page-head"><div class="grow">' +
+        '<div class="eyebrow">Field records</div>' +
+        "<h1>Scouting log</h1>" +
+        '<p class="lede">Observations are stored in this browser only. Export the CSV at the end of each week — it is your evidence base for thresholds and for what actually worked.</p>' +
+      "</div>" +
+      '<div class="page-actions">' +
+        '<button class="btn" data-action="scout-export">' + icon("download") + "Export CSV</button>" +
+        '<button class="btn btn-ghost" data-action="scout-clear">Clear all</button></div></div>' +
+
+      '<div class="grid g3" style="align-items:start">' +
+        '<div class="card pad-lg" style="grid-column:span 2">' +
+          '<div class="card-head"><h3>New observation</h3></div>' +
+          '<form id="scoutForm" autocomplete="off">' +
+            '<div class="grid g3" style="gap:12px">' +
+              '<label class="field"><span>Date</span><input type="date" name="date" required value="' + new Date().toISOString().slice(0, 10) + '"></label>' +
+              '<label class="field"><span>Crop</span><select name="crop">' + crops + "</select></label>" +
+              '<label class="field"><span>Count</span><input type="number" name="count" min="0" step="0.1" required placeholder="0"></label>' +
+            "</div>" +
+            '<div class="grid g2" style="gap:12px">' +
+              '<label class="field"><span>Pest, disease or observation</span>' +
+                '<input type="text" name="pest" list="pestNames" required placeholder="e.g. Tuta absoluta">' +
+                '<datalist id="pestNames">' + AGRO.pests.map((p) => '<option value="' + esc(p.name) + '">').join("") + "</datalist></label>" +
+              '<label class="field"><span>Unit</span><select name="unit">' + units + "</select></label>" +
+            "</div>" +
+            '<label class="field"><span>Notes — block, cultivar, stage, action taken</span>' +
+              '<textarea name="notes" rows="3" placeholder="Block B3, Marmande, first fruit set. 4 mines on 20 plants; beneficials present."></textarea></label>' +
+            '<button class="btn btn-primary" type="submit">' + icon("plus") + "Save observation</button>" +
+          "</form>" +
+        "</div>" +
+
+        '<div class="card"><div class="card-head"><h3>Last 14 counts</h3></div>' +
+          (chart || '<p class="small muted">No data yet.</p>') +
+          '<hr class="sep" style="margin:14px 0">' +
+          '<div class="small muted">Records: <strong>' + state.scout.length + "</strong><br>Mean count: <strong>" +
+            (state.scout.length ? (state.scout.reduce((s, r) => s + (Number(r.count) || 0), 0) / state.scout.length).toFixed(1) : "—") + "</strong></div>" +
+        "</div>" +
+      "</div>" +
+
+      (rows.length ? '<div style="margin-top:18px">' + table + "</div>" : "");
+  }
+
+  /* ============================================================
+     VIEW: degree days
+     ============================================================ */
+
+  function viewGdd() {
+    const g = state.gdd;
+    const presets = AGRO.gddPresets.map((p) =>
+      '<option value="' + p.base + '"' + (g && Number(g.base) === Number(p.base) ? " selected" : "") + ">" +
+      esc(p.name) + " (base " + p.base + " °C)</option>").join("");
+
+    return '<div class="page-head"><div class="grow">' +
+        '<div class="eyebrow">Phenology model</div>' +
+        "<h1>Degree-day accumulator</h1>" +
+        '<p class="lede">Daily development is driven by temperature above a lower threshold. Enter daily minimum and maximum temperatures, ' +
+        "and the model accumulates heat units to time inspection and intervention.</p>" +
+      "</div></div>" +
+
+      '<div class="grid g3" style="align-items:start">' +
+        '<div class="card pad-lg">' +
+          '<div class="card-head"><h3>Input</h3></div>' +
+          '<label class="field"><span>Pest preset</span><select data-action="gdd-preset">' + presets + "</select></label>" +
+          '<label class="field"><span>Lower development threshold (°C)</span><input type="number" id="gddBase" step="0.1" value="' + (g ? g.base : 10) + '"></label>' +
+          '<label class="field"><span>Daily temperatures — one day per line</span>' +
+            '<textarea id="gddData" rows="9" placeholder="2026-03-01, 7, 19&#10;2026-03-02, 8, 21&#10;2026-03-03, 9, 23">' + (g ? esc(g.raw) : "") + "</textarea></label>" +
+          '<div class="row"><button class="btn btn-primary" data-action="gdd-run">' + icon("gdd") + "Calculate</button>" +
+            '<button class="btn btn-ghost" data-action="gdd-sample">Load example</button></div>' +
+          '<div class="callout" style="margin-top:14px"><strong>Method.</strong> Simple average: GDD = max(0, (Tmin + Tmax)/2 − base). ' +
+            "Upper thresholds and non-linear models are more accurate in extreme heat; treat results as planning estimates.</div>" +
+        "</div>" +
+
+        '<div style="grid-column:span 2">' +
+          (g ? gddResult(g) : '<div class="empty"><h3>No accumulation yet</h3><p class="small">Paste temperature data or load the example to see the cumulative curve.</p></div>') +
+        "</div>" +
+      "</div>";
+  }
+
+  function gddResult(g) {
+    const chart = lineChart(g.cum, g.days);
+    const total = Math.round(g.total);
+    return '<div class="grid g3" style="margin-bottom:14px">' +
+        stat("Accumulated GDD", total, g.days + " days · base " + g.base + " °C") +
+        stat("Daily mean", (total / Math.max(1, g.days)).toFixed(1), "heat units per day") +
+        stat("Peak day", g.peak.toFixed(1), "highest single-day accumulation") +
+      "</div>" +
+      '<div class="card">' +
+        '<div class="card-head"><h3>Cumulative heat units</h3><span class="spacer"></span>' +
+          '<span class="tiny muted">first to last date</span></div>' + chart +
+        '<div class="table-wrap" style="margin-top:14px;max-height:260px;overflow-y:auto">' +
+          "<table><thead><tr><th>Date</th><th class=\"num\">Tmin</th><th class=\"num\">Tmax</th><th class=\"num\">Daily GDD</th><th class=\"num\">Cumulative</th></tr></thead><tbody>" +
+          g.rows.map((r) =>
+            "<tr><td class=\"nowrap small\">" + esc(r.date) + "</td><td class=\"num mono\">" + r.tmin + "</td>" +
+            "<td class=\"num mono\">" + r.tmax + "</td><td class=\"num mono\">" + r.dd.toFixed(1) + "</td>" +
+            "<td class=\"num mono\">" + r.cum.toFixed(0) + "</td></tr>").join("") +
+          "</tbody></table></div></div>";
+  }
+
+  function lineChart(values, labels) {
+    if (!values.length) return "";
+    const w = 680, h = 170, padL = 38, padR = 12, padT = 12, padB = 22;
+    const max = Math.max.apply(null, values) || 1;
+    const nice = Math.ceil(max / 50) * 50 || max;
+    const x = (i) => padL + (i * (w - padL - padR)) / Math.max(1, values.length - 1);
+    const y = (v) => padT + (h - padT - padB) * (1 - v / nice);
+
+    const pts = values.map((v, i) => x(i).toFixed(1) + "," + y(v).toFixed(1));
+    const line = pts.join(" ");
+    const area = padL + "," + y(0) + " " + line + " " + x(values.length - 1) + "," + y(0);
+
+    let grid = "";
+    for (let k = 0; k <= 4; k++) {
+      const v = (nice / 4) * k;
+      grid += '<line class="grid-line" x1="' + padL + '" x2="' + (w - padR) + '" y1="' + y(v).toFixed(1) + '" y2="' + y(v).toFixed(1) + '"/>';
+      grid += '<text x="' + (padL - 6) + '" y="' + (y(v) + 3).toFixed(1) + '" text-anchor="end">' + Math.round(v) + "</text>";
+    }
+
+    return '<svg class="chart" viewBox="0 0 ' + w + " " + h + '" role="img" aria-label="Cumulative degree days">' +
+      grid + '<polygon class="area" points="' + area + '"/>' +
+      '<polyline class="line" points="' + line + '"/>' +
+      (values.length <= 40 ? values.map((v, i) => '<circle class="pt" cx="' + x(i).toFixed(1) + '" cy="' + y(v).toFixed(1) + '" r="2.4"/>').join("") : "") +
+      '<text x="' + padL + '" y="' + (h - 6) + '">' + esc(labels[0] || "") + "</text>" +
+      '<text x="' + (w - padR) + '" y="' + (h - 6) + '" text-anchor="end">' + esc(labels[labels.length - 1] || "") + "</text>" +
+      "</svg>";
+  }
+
+  /* ============================================================
+     VIEW: photo protocol
+     ============================================================ */
+
+  function viewProtocol() {
+    return '<div class="page-head"><div class="grow">' +
+        '<div class="eyebrow">Diagnostic quality</div>' +
+        "<h1>Photo and sample protocol</h1>" +
+        '<p class="lede">Most failed identifications are photography failures, not expert failures. ' +
+        "A photograph confirms a species only when the diagnostic characters are visible — this protocol makes them visible.</p>" +
+      "</div></div>" +
+
+      '<div class="grid g2" style="align-items:start">' +
+        '<div class="card pad-lg">' +
+          '<div class="card-head"><h3>For an insect or mite</h3></div>' +
+          '<ol class="small" style="padding-left:18px;line-height:1.9;color:var(--ink-700)">' +
+            "<li><strong>Dorsal view</strong>, whole body, in focus, with a scale reference (ruler, coin or grid paper).</li>" +
+            "<li><strong>Lateral view</strong> showing the legs, pronotum and abdomen.</li>" +
+            "<li><strong>Head close-up</strong>: antennae insertion, segmentation and mouthparts.</li>" +
+            "<li><strong>Wing close-up</strong>: venation, scales, halteres or elytra.</li>" +
+            "<li><strong>Underside</strong> where relevant (aphids, scales, mites).</li>" +
+            "<li>Record <strong>host plant, location on the plant, behaviour and size</strong> before collecting.</li>" +
+            "<li>Preserve 5–10 specimens in 70% ethanol; never put soft-bodied larvae in alcohol without photographing them first.</li>" +
+          "</ol>" +
+          '<div class="callout"><strong>Lighting beats magnification.</strong> Diffuse daylight or a ring light on a plain background produces more usable detail than a flash on a shiny specimen.</div>' +
+        "</div>" +
+
+        '<div class="card pad-lg">' +
+          '<div class="card-head"><h3>For a plant problem</h3></div>' +
+          '<ol class="small" style="padding-left:18px;line-height:1.9;color:var(--ink-700)">' +
+            "<li><strong>Whole plant</strong> in its context — row, bed, tunnel or field.</li>" +
+            "<li><strong>Symptom close-up</strong> on the affected organ, both surfaces if leaves.</li>" +
+            "<li><strong>Transition zone</strong> between healthy and affected tissue — the most diagnostic area.</li>" +
+            "<li><strong>Distribution</strong>: photograph a transect or the field pattern from a raised position.</li>" +
+            "<li><strong>Roots and collar</strong>: dig up one affected and one healthy plant; wash the roots.</li>" +
+            "<li>Record <strong>crop, cultivar, growth stage, irrigation, last sprays and recent weather</strong>.</li>" +
+          "</ol>" +
+          '<div class="callout"><strong>Include the boring details.</strong> Fertiliser rate, irrigation timing and the last three sprays explain more ' +
+          "abiotic and phytotoxicity cases than any laboratory test.</div>" +
+        "</div>" +
+      "</div>" +
+
+      '<div class="card" style="margin-top:16px">' +
+        '<div class="card-head"><h3>What a photograph cannot do</h3></div>' +
+        '<div class="table-wrap"><table><thead><tr><th>Question</th><th>What is actually required</th></tr></thead><tbody>' +
+          "<tr><td>Which cryptic species of <em>Bemisia tabaci</em>?</td><td>Molecular identification (COI, mtCOI) or isoenzyme analysis.</td></tr>" +
+          "<tr><td><em>Tuta absoluta</em> vs <em>Phthorimaea operculella</em>?</td><td>Genitalia dissection or DNA barcoding.</td></tr>" +
+          "<tr><td>Which <em>Liriomyza</em> species?</td><td>Adult male genitalia, or rearing plus molecular confirmation.</td></tr>" +
+          "<tr><td>Fusarium vs Verticillium wilt?</td><td>Laboratory isolation and morphological or molecular identification.</td></tr>" +
+          "<tr><td>Is this a virus?</td><td>ELISA or PCR on symptomatic tissue; symptom patterns are not sufficient.</td></tr>" +
+          "<tr><td>Herbicide-resistant weed population?</td><td>Dose-response resistance testing, not field observation alone.</td></tr>" +
+        "</tbody></table></div></div>";
+  }
+
+  /* ============================================================
+     VIEW: about
+     ============================================================ */
+
+  function viewAbout() {
+    return '<div class="page-head"><div class="grow">' +
+        '<div class="eyebrow">Scope, method and limits</div>' +
+        "<h1>About this workbench</h1>" +
+      "</div></div>" +
+
+      '<div class="grid g2" style="align-items:start">' +
+        '<div class="card pad-lg">' +
+          '<h3 style="margin-bottom:10px">What it is</h3>' +
+          "<p class=\"small\">A structured field reference for agronomy and plant protection, built around the logic of integrated pest management. " +
+          "It organises identification characters, biology, thresholds and management options so that a decision can be justified and recorded — " +
+          "not a substitute for a diagnostic laboratory or a licensed agronomist.</p>" +
+
+          '<p class="small" style="margin-top:10px">It deliberately covers more than pests and pathogens. A ranked list that contains only organisms is a ' +
+          "misleading list, because a large share of field problems are soil, water, climate or spray related. The library therefore carries " +
+          "<strong>abiotic, nutritional and physiological disorders</strong> alongside the pest and disease entries, and a per-crop <strong>agronomy guide</strong> " +
+          "sets out the climate, soil, cultivar, planting, water and nutrition context that has to be right before a crop problem can even be interpreted.</p>" +
+
+          '<h3 style="margin:18px 0 10px">Geographic emphasis</h3>' +
+          "<p class=\"small\">The crop list, pest status notes and seasonal programmes are weighted towards Mediterranean, semi-arid and Saharan production, " +
+          "with Algeria as the reference context: Mitidja and coastal horticulture, the high plains of the east, and the oases of the south.</p>" +
+
+          '<h3 style="margin:18px 0 10px">How the ranking works</h3>' +
+          "<p class=\"small\">The diagnostic engine scores each library entry against the crop you selected, the organ affected and the symptoms you confirmed. " +
+          "The percentage expresses <em>character fit</em>, not probability. A high score with one symptom is still a weak hypothesis, which is why " +
+          "the engine caps confidence when fewer than two symptoms are selected.</p>" +
+
+          '<p class="small" style="margin-top:10px">For the disorder entries, the field pattern you choose adds an interpretive note: a uniform, wet-zone or ' +
+          "row-regular distribution is more consistent with a soil, water, climate or spray cause than with a focal, contagious organism. That is context for " +
+          "reading the result, not proof — a patchy problem can still be abiotic, and a uniform one can still be infectious.</p>" +
+        "</div>" +
+
+        '<div class="stack">' +
+          '<div class="card">' +
+            '<div class="card-head"><h3>Standards followed</h3></div>' +
+            '<ul class="small" style="padding-left:18px;line-height:1.8;color:var(--ink-700)">' +
+              "<li>IRAC mode-of-action classification for insecticides and acaricides.</li>" +
+              "<li>FRAC code list for fungicides, including multi-site partners.</li>" +
+              "<li>HRAC global herbicide resistance classification.</li>" +
+              "<li>EPPO diagnostic protocols and CABI datasheets for species biology.</li>" +
+              "<li>FAO and national plant protection guidance for quarantine and locust emergencies.</li>" +
+            "</ul>" +
+          "</div>" +
+
+          '<div class="card">' +
+            '<div class="card-head"><h3>Sources worth consulting</h3></div>' +
+            '<ul class="small" style="padding-left:18px;line-height:1.9;color:var(--ink-700)">' +
+              '<li><a href="https://irac-online.org" target="_blank" rel="noopener">IRAC — Mode of Action classification</a></li>' +
+              '<li><a href="https://www.frac.info" target="_blank" rel="noopener">FRAC — Fungicide Resistance Action Committee</a></li>' +
+              '<li><a href="https://gd.eppo.int" target="_blank" rel="noopener">EPPO Global Database</a></li>' +
+              '<li><a href="https://www.cabi.org/isc" target="_blank" rel="noopener">CABI Invasive Species Compendium</a></li>' +
+              '<li><a href="https://www.fao.org/plant-health" target="_blank" rel="noopener">FAO Plant Health</a></li>' +
+              "<li>National plant protection service (INPV, Algeria) for registration and quarantine status.</li>" +
+            "</ul>" +
+          "</div>" +
+
+          '<div class="callout red"><strong>Limits of this tool.</strong> ' +
+            "Identifications are provisional unless confirmed. Product registrations, doses and intervals change and are national. " +
+            "No entry here constitutes a recommendation to apply a pesticide, and no dose is given. " +
+            "Always read the authorised label, respect re-entry and preharvest intervals, and protect pollinators, water bodies and operators.</div>" +
+
+          '<div class="card"><div class="small muted">Dataset revision ' + AGRO.meta.revision +
+            " · " + AGRO.pests.length + " entries · " + AGRO.crops.length + " crops · " + AGRO.moa.length + " MoA groups. " +
+            "Stored locally in your browser; no data leaves the device.</div></div>" +
+        "</div>" +
+      "</div>";
+  }
+
+  /* ============================================================
+     EVENTS
+     ============================================================ */
+
+  document.addEventListener("click", function (e) {
+    const el = e.target.closest("[data-action]");
+    if (!el) return;
+    const action = el.getAttribute("data-action");
+    const id = el.getAttribute("data-id");
+
+    /* navigation-adjacent */
+    if (action === "new-scout") { location.hash = "#/scout"; setTimeout(() => { const f = $("#scoutForm"); if (f) f.querySelector("input[name=pest]").focus(); }, 60); return; }
+    if (action === "close-modal") { closeModal(); return; }
+    if (action === "print") { window.print(); return; }
+
+    /* diagnosis */
+    if (action === "diag-crop") { state.diag.crop = id; state.diag.step = 1; render(); return; }
+    if (action === "diag-organ") { state.diag.organ = id; state.diag.step = 2; state.diag.symptoms = []; state.diag.allSyms = false; render(); return; }
+    if (action === "diag-all-syms") { state.diag.allSyms = !state.diag.allSyms; render(); return; }
+    if (action === "diag-symptom") {
+      const i = state.diag.symptoms.indexOf(id);
+      if (i >= 0) state.diag.symptoms.splice(i, 1); else state.diag.symptoms.push(id);
+      render(); return;
+    }
+    if (action === "diag-pattern") { state.diag.pattern = id; render(); return; }
+    if (action === "diag-next") { state.diag.step = 3; render(); return; }
+    if (action === "diag-back") { state.diag.step = Math.max(0, state.diag.step - 1); render(); return; }
+    if (action === "diag-run") { state.diag.step = 4; render(); return; }
+    if (action === "diag-reset") { state.diag = { step: 0, crop: null, organ: null, symptoms: [], pattern: null, allSyms: false }; render(); return; }
+
+    /* library */
+    if (action === "lib-kind") { state.lib.kind = id; render(); return; }
+    if (action === "open-pest") {
+      const p = pestById(id);
+      if (p) openModal(pestDetail(p));
+      return;
+    }
+    if (action === "open-crop") { closeModal(); location.hash = "#/crops/" + id; return; }
+
+    /* key */
+    if (action === "key-opt") {
+      const next = el.getAttribute("data-next");
+      const label = el.getAttribute("data-label");
+      state.keyTrail.push(label);
+      state.keyPath.push(next);
+      state.keyNode = next;
+      render();
+      return;
+    }
+    if (action === "key-back") {
+      if (state.keyPath.length > 1) {
+        state.keyPath.pop();
+        state.keyTrail.pop();
+        state.keyNode = state.keyPath[state.keyPath.length - 1];
+      } else {
+        state.keyNode = AGRO.keyStart;
+        state.keyTrail = [];
+        state.keyPath = [AGRO.keyStart];
+      }
+      render();
+      return;
+    }
+    if (action === "key-reset") {
+      state.keyTrail = [];
+      state.keyPath = [AGRO.keyStart];
+      state.keyNode = AGRO.keyStart;
+      render();
+      return;
+    }
+
+    /* scout */
+    if (action === "scout-del") {
+      state.scout = state.scout.filter((r) => r.id !== id);
+      saveScout(); render(); return;
+    }
+    if (action === "scout-clear") {
+      if (!state.scout.length) return;
+      if (confirm("Delete all scouting records on this device?")) {
+        state.scout = []; saveScout(); render();
+      }
+      return;
+    }
+    if (action === "scout-export") { exportScout(); return; }
+
+    /* gdd */
+    if (action === "gdd-run") { runGdd(); return; }
+    if (action === "gdd-sample") { loadGddSample(); return; }
+  });
+
+  document.addEventListener("change", function (e) {
+    const el = e.target.closest("[data-action]");
+    if (!el) return;
+    const action = el.getAttribute("data-action");
+
+    if (action === "lib-crop") { state.lib.crop = el.value; render(); return; }
+    if (action === "crops-crop") { state.cropGuide = el.value; location.hash = "#/crops/" + el.value; return; }
+    if (action === "ipm-crop") { location.hash = "#/ipm/" + el.value; return; }
+    if (action === "rot-toggle") {
+      const key = el.getAttribute("data-key");
+      if (el.checked) state.rot.add(key); else state.rot.delete(key);
+      render();
+      return;
+    }
+    if (action === "gdd-preset") {
+      const base = el.value;
+      const preset = AGRO.gddPresets.find((p) => String(p.base) === String(base));
+      const input = $("#gddBase");
+      if (input) input.value = base;
+      toast(preset ? preset.name + " — " + preset.note : "Base temperature applied.");
+      return;
+    }
+  });
+
+  document.addEventListener("submit", function (e) {
+    if (e.target.id !== "scoutForm") return;
+    e.preventDefault();
+    const f = e.target;
+    const rec = {
+      id: "s" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      date: f.date.value,
+      crop: f.crop.value,
+      pest: f.pest.value.trim(),
+      unit: f.unit.value,
+      count: f.count.value,
+      notes: f.notes.value.trim()
+    };
+    if (!rec.pest) { toast("Describe the observation first."); return; }
+    state.scout.push(rec);
+    saveScout();
+    render();
+    toast("Observation saved.");
+  });
+
+  /* global search */
+  const search = $("#globalSearch");
+  search.addEventListener("input", function () {
+    state.lib.q = search.value;
+    if (state.route !== "library") location.hash = "#/library";
+    else render();
+  });
+
+  /* keyboard */
+  document.addEventListener("keydown", function (e) {
+    // Keyboard activation for interactive cards/rows that are not native buttons.
+    if ((e.key === "Enter" || e.key === " ") && document.activeElement &&
+        document.activeElement.hasAttribute("data-action") &&
+        !/^(A|BUTTON|INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName)) {
+      e.preventDefault();
+      document.activeElement.click();
+      return;
+    }
+    if (e.key === "Escape") { closeModal(); $("#sidebar").classList.remove("open"); }
+    if (e.key === "Tab" && !$("#modal").hidden) {
+      const focusables = Array.prototype.slice.call(
+        $("#modal").querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')
+      ).filter(function (el) { return el.offsetParent !== null; });
+      if (focusables.length) {
+        const first = focusables[0], last = focusables[focusables.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    }
+    if (e.key === "/" && document.activeElement !== search && !/input|textarea|select/i.test(document.activeElement.tagName)) {
+      e.preventDefault(); search.focus();
+    }
+  });
+
+  /* menu */
+  $("#menuBtn").addEventListener("click", function () {
+    $("#sidebar").classList.toggle("open");
+  });
+  document.addEventListener("click", function (e) {
+    if (window.innerWidth <= 940 && !e.target.closest("#sidebar") && !e.target.closest("#menuBtn")) {
+      $("#sidebar").classList.remove("open");
+    }
+  });
+
+  /* ---------------- scouting export ---------------- */
+
+  function exportScout() {
+    if (!state.scout.length) { toast("Nothing to export yet."); return; }
+    const head = ["date", "crop", "observation", "unit", "count", "notes"];
+    const lines = [head.join(",")].concat(state.scout.map((r) =>
+      [r.date, cropName(r.crop), r.pest, r.unit, r.count, (r.notes || "").replace(/"/g, '""')]
+        .map((v) => '"' + String(v == null ? "" : v) + '"').join(",")));
+    const blob = new Blob(["\ufeff" + lines.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "agroscope-scouting-" + new Date().toISOString().slice(0, 10) + ".csv";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    toast("CSV exported.");
+  }
+
+  /* ---------------- degree days ---------------- */
+
+  function runGdd() {
+    const base = parseFloat($("#gddBase").value);
+    const raw = $("#gddData").value.trim();
+    if (isNaN(base)) { toast("Enter a valid base temperature."); return; }
+    if (!raw) { toast("Paste at least one line of temperature data."); return; }
+
+    const rows = [];
+    let cum = 0, peak = 0;
+
+    raw.split(/\r?\n/).forEach((line, idx) => {
+      const parts = line.split(/[,;\t]+/).map((s) => s.trim()).filter(Boolean);
+      if (!parts.length) return;
+      let date, tmin, tmax;
+      if (parts.length >= 3) { date = parts[0]; tmin = parseFloat(parts[1]); tmax = parseFloat(parts[2]); }
+      else if (parts.length === 2) { date = "Day " + (idx + 1); tmin = parseFloat(parts[0]); tmax = parseFloat(parts[1]); }
+      else return;
+      if (isNaN(tmin) || isNaN(tmax)) return;
+      if (tmin > tmax) { const t = tmin; tmin = tmax; tmax = t; }
+      const dd = Math.max(0, (tmin + tmax) / 2 - base);
+      cum += dd;
+      if (dd > peak) peak = dd;
+      rows.push({ date: date, tmin: tmin, tmax: tmax, dd: dd, cum: cum });
+    });
+
+    if (!rows.length) { toast("No valid lines. Use: date, tmin, tmax"); return; }
+    state.gdd = { base: base, raw: raw, rows: rows, cum: rows.map((r) => r.cum), days: rows.length, total: cum, peak: peak };
+    render();
+    toast(rows.length + " days accumulated.");
+  }
+
+  function loadGddSample() {
+    const base = 8;
+    const temps = [
+      [7, 19], [8, 21], [9, 23], [10, 24], [9, 22], [8, 20], [7, 18],
+      [8, 20], [10, 23], [11, 25], [12, 27], [11, 26], [10, 24], [9, 22],
+      [9, 21], [10, 24], [12, 28], [13, 30], [12, 28], [11, 26]
+    ];
+    const start = new Date();
+    start.setDate(start.getDate() - temps.length);
+    const raw = temps.map((t, i) => {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      return d.toISOString().slice(0, 10) + ", " + t[0] + ", " + t[1];
+    }).join("\n");
+    $("#gddBase").value = base;
+    $("#gddData").value = raw;
+    runGdd();
+  }
+
+  /* ---------------- boot ---------------- */
+
+  $("#dataStamp").textContent = "rev " + AGRO.meta.revision;
+
+  window.addEventListener("hashchange", render);
+  if (!location.hash) location.hash = "#/dashboard";
+  render();
+
+})();
