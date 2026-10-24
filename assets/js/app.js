@@ -507,6 +507,61 @@
       "</tbody></table></div>";
   }
 
+  /* Rotation fit, computed only from the library: botanical family and the
+     crop lists already recorded on each pest and disease entry. Nothing here
+     is a validated rotation plan — the guide's rotation text governs. */
+  function rotationFit(cropId) {
+    const crop = cropOf(cropId);
+    const others = AGRO.crops.filter((c) => c.id !== cropId && c.id !== "stored" && AGRO.cropGuides[c.id]);
+
+    const family = crop && crop.family && crop.family !== "—" ? crop.family : null;
+    const sameFamily = family ? others.filter((c) => c.family === family) : [];
+
+    const overlap = others.map((c) => {
+      const shared = AGRO.pests.filter((p) =>
+        p.kind !== "beneficial" &&
+        (p.crops || []).includes(cropId) && (p.crops || []).includes(c.id));
+      return { crop: c, shared };
+    }).filter((x) => x.shared.length)
+      .sort((a, b) => b.shared.length - a.shared.length || a.crop.name.localeCompare(b.crop.name));
+
+    let html = '<div class="card">' +
+      '<div class="card-head"><h3>Rotation fit</h3><span class="spacer"></span>' +
+        '<span class="tiny muted">from the library</span></div>';
+
+    html += '<p class="small" style="color:var(--ink-700);margin:0 0 10px">' +
+      "What to avoid before or after this crop, computed from botanical family and shared pest and disease associations.</p>";
+
+    if (sameFamily.length) {
+      html += '<div class="small strong" style="margin:0 0 6px;color:#8a5a12">Same family — do not follow ' +
+        esc(crop.name) + " back-to-back</div>" +
+        '<div class="row-tight" style="flex-wrap:wrap;gap:6px;margin-bottom:12px">' +
+        sameFamily.map((c) => '<a class="pill" href="#/crops/' + c.id + '" style="text-decoration:none">' + esc(c.name) + "</a>").join("") +
+        "</div>";
+    } else {
+      html += '<p class="small muted" style="margin:0 0 12px">No other guide shares this botanical family.</p>';
+    }
+
+    if (overlap.length) {
+      html += '<div class="small strong" style="margin:0 0 6px">Shared pest and disease load</div>' +
+        '<ul class="small" style="margin:0;padding-left:18px;color:var(--ink-700);line-height:1.7">' +
+        overlap.slice(0, 6).map((x) => {
+          const names = x.shared.slice(0, 3).map((p) => esc(p.name)).join(", ") +
+            (x.shared.length > 3 ? ", …" : "");
+          return "<li>following <a href=\"#/crops/" + x.crop.id + '">' + esc(x.crop.name) + "</a> shares " +
+            x.shared.length + " entr" + (x.shared.length === 1 ? "y" : "ies") + ": " + names + "</li>";
+        }).join("") + "</ul>";
+    } else {
+      html += '<p class="small muted" style="margin:0">No crop in the library shares a recorded pest or disease with this one.</p>';
+    }
+
+    html += '<div class="callout" style="margin-top:12px"><strong>Not a rotation plan.</strong> ' +
+      "This is a library cross-check, not agronomic advice. Build the sequence around the guide's rotation note, soil, water and market — and confirm " +
+      "soilborne risk with your advisory service.</div></div>";
+
+    return html;
+  }
+
   function viewCrops() {
     const cropId = state.param && cropOf(state.param) && AGRO.cropGuides[state.param]
       ? state.param : (state.cropGuide && AGRO.cropGuides[state.cropGuide] ? state.cropGuide : "tomato");
@@ -587,6 +642,7 @@
           '<div class="card-head"><h3>Regional note</h3></div>' +
           '<p class="small" style="color:var(--ink-700)">' + esc(g.regionNote) + "</p>" +
         "</div>" +
+        rotationFit(cropId) +
         '<div class="card">' +
           '<div class="card-head"><h3>Linked tools</h3></div>' +
           '<div class="stack" style="gap:8px">' +
