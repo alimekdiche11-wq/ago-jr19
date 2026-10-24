@@ -141,6 +141,25 @@
     lastFocused = null;
   }
 
+  function shortcutsModal() {
+    const rows = [
+      ["/", "Jump to the search box"],
+      ["?", "Show this shortcut list"],
+      ["Esc", "Close a dialog or the menu"],
+      ["Enter / Space", "Open the focused card or result"],
+      ["Tab / Shift+Tab", "Move focus; cycles inside a dialog"]
+    ];
+    return '<div class="detail-head">' +
+        '<h2 id="modalTitle">Keyboard shortcuts</h2>' +
+        '<p class="small muted" style="margin-top:6px">The workbench is fully usable without a mouse.</p>' +
+      "</div>" +
+      '<div class="table-wrap"><table><tbody>' +
+        rows.map((r) => '<tr><td style="width:170px"><span class="kbd">' + esc(r[0]) + '</span></td><td class="small">' + esc(r[1]) + "</td></tr>").join("") +
+      "</tbody></table></div>" +
+      '<div class="callout" style="margin-top:14px"><strong>Cards and results behave as buttons.</strong> ' +
+      "Library entries and diagnosis results take focus with Tab and open with Enter or Space; the detail dialog traps focus until you close it.</div>";
+  }
+
   /* ---------------- navigation ---------------- */
 
   const NAV = [
@@ -708,7 +727,9 @@
         '<p class="lede">Line up the crops you intend to grow, in order, and the app flags the transitions the library can already see: ' +
         "back-to-back crops of the same botanical family, and pairs that share the most recorded pests and diseases.</p>" +
       "</div>" +
-      (seq.length ? '<div class="page-actions"><button class="btn btn-ghost" data-action="seq-clear">' + icon("trash") + "Clear</button></div>" : "") +
+      (seq.length ? '<div class="page-actions">' +
+        '<button class="btn" data-action="seq-export">' + icon("download") + "Export CSV</button>" +
+        '<button class="btn btn-ghost" data-action="seq-clear">' + icon("trash") + "Clear</button></div>" : "") +
       "</div>";
 
     const builder = '<div class="toolbar">' +
@@ -1482,6 +1503,7 @@
     if (action === "new-scout") { location.hash = "#/scout"; setTimeout(() => { const f = $("#scoutForm"); if (f) f.querySelector("input[name=pest]").focus(); }, 60); return; }
     if (action === "close-modal") { closeModal(); return; }
     if (action === "print") { window.print(); return; }
+    if (action === "help") { openModal(shortcutsModal()); return; }
 
     /* diagnosis */
     if (action === "diag-crop") { state.diag.crop = id; state.diag.step = 1; render(); return; }
@@ -1508,6 +1530,7 @@
     if (action === "seq-up") { const i = +id; if (i > 0) { const t = state.seq[i - 1]; state.seq[i - 1] = state.seq[i]; state.seq[i] = t; saveSeq(); render(); } return; }
     if (action === "seq-down") { const i = +id; if (i < state.seq.length - 1) { const t = state.seq[i + 1]; state.seq[i + 1] = state.seq[i]; state.seq[i] = t; saveSeq(); render(); } return; }
     if (action === "seq-clear") { if (confirm("Clear the planned sequence?")) { state.seq = []; saveSeq(); render(); } return; }
+    if (action === "seq-export") { exportSeq(); return; }
 
     /* library */
     if (action === "lib-kind") { state.lib.kind = id; render(); return; }
@@ -1649,6 +1672,10 @@
     if (e.key === "/" && document.activeElement !== search && !/input|textarea|select/i.test(document.activeElement.tagName)) {
       e.preventDefault(); search.focus();
     }
+    if (e.key === "?" && !/input|textarea|select/i.test(document.activeElement.tagName)) {
+      e.preventDefault();
+      if ($("#modal").hidden) openModal(shortcutsModal());
+    }
   });
 
   /* menu */
@@ -1701,8 +1728,23 @@
     toast("Backup file saved.");
   }
 
-  function importAll(file) {
-    const reader = new FileReader();
+  function exportSeq() {
+    if (!state.seq.length) { toast("Nothing to export yet."); return; }
+    const head = ["season", "crop", "family", "previous_crop", "same_family", "shared_entries"];
+    const lines = [head.join(",")];
+    state.seq.forEach((id, i) => {
+      const prev = i > 0 ? state.seq[i - 1] : null;
+      const sameFam = prev ? String(!!(familyOf(prev) && familyOf(prev) === familyOf(id))) : "";
+      const shared = prev ? sharedRisk(prev, id).length : "";
+      lines.push([i + 1, cropName(id), familyOf(id) || "", prev ? cropName(prev) : "", sameFam, shared]
+        .map((v) => '"' + String(v) + '"').join(","));
+    });
+    downloadBlob(new Blob(["\ufeff" + lines.join("\r\n")], { type: "text/csv;charset=utf-8;" }),
+      "agroscope-rotation-" + new Date().toISOString().slice(0, 10) + ".csv");
+    toast("Rotation CSV exported.");
+  }
+
+  function importAll(file) {    const reader = new FileReader();
     reader.onload = function () {
       try {
         const d = JSON.parse(reader.result);
