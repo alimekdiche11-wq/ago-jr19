@@ -592,6 +592,31 @@ hr.sep { border: 0; border-top: 1px solid var(--line); margin: 20px 0; }
   background: #fafbf9; color: var(--ink-500);
 }
 
+/* ---------- crop rotation planner ---------- */
+
+.seq-list { display: flex; flex-direction: column; gap: 8px; }
+.seq-chip {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 10px 9px 12px; border: 1px solid var(--line); border-radius: var(--r);
+  background: var(--card);
+}
+.seq-chip .seq-n {
+  width: 24px; height: 24px; flex: none; border-radius: 50%;
+  display: grid; place-items: center; font-size: 12px; font-weight: 650;
+  background: var(--green-50); color: var(--green-700);
+}
+.seq-chip .seq-name { font-size: 14px; font-weight: 550; display: flex; align-items: baseline; gap: 4px; }
+.seq-chip .icon-btn[disabled] { opacity: .3; cursor: not-allowed; }
+
+.transition {
+  border-left: 3px solid var(--line); padding: 10px 12px; margin-bottom: 8px;
+  background: #fbfcfa; border-radius: 0 var(--r) var(--r) 0;
+}
+.transition.lvl-red { border-left-color: var(--red-700); }
+.transition.lvl-amber { border-left-color: #d97706; }
+.transition.lvl-green { border-left-color: #24855b; }
+.transition .tr-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
 /* ---------- responsive ---------- */
 
 @media (max-width: 1080px) {

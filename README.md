@@ -10,6 +10,10 @@ The differential-diagnosis assessment, which ranks candidates and states what wo
 
 ![Diagnosis assessment](docs/diagnosis.png)
 
+The crop-rotation planner, whose transition checks are derived from the library rather than invented:
+
+![Crop rotation planner](docs/rotation.png)
+
 A hosted copy is also published via GitHub Pages: **https://alimekdiche11-wq.github.io/ago-jr19/** (same static files, no server or build step).
 
 When served over HTTP(S) it can be installed as a standalone web app from the browser (it ships a `manifest.webmanifest` and an SVG icon), and a service worker (`sw.js`) caches the app shell so the hosted copy keeps working with no network after the first visit. From a local file it simply opens as an ordinary offline page.
@@ -25,12 +29,13 @@ When served over HTTP(S) it can be installed as a standalone web app from the br
 | **Crop agronomy** | Per-crop guide: climate, soil, variety and cultivar choice, planting window and density, irrigation, nutrition, harvest, storage, rotation and key risks — followed by that crop's reference entries. The agronomic context that has to be right before a crop problem can even be interpreted. Each guide also shows a **rotation fit** panel computed from the library: which other crops share the botanical family, and which share the most pest and disease associations. |
 | **Pest & disease library** | 73 entries: biology, damage, favourable conditions, monitoring, action thresholds, status in Algeria, IPM measures, chemistry by IRAC/FRAC group, resistance notes and lookalike species. Includes 13 abiotic, nutritional and physiological disorders. |
 | **IPM planner** | Seasonal programme by crop and phenological stage, organised as prevention → monitoring → biological → cultural → chemical. |
+| **Crop rotation** | Build a sequence of crops and check the transitions: same-family back-to-back pairs and pairs sharing the most recorded pests and diseases. Saved per device. |
 | **Resistance rotation** | IRAC / FRAC / HRAC group tracker with selection-pressure risk ratings and rotation rules. |
 | **Scouting log** | Field observations stored locally, with a trend chart and CSV export. |
 | **Degree days** | Accumulates heat units from daily minimum/maximum temperatures using the simple-average method, with pest presets and a cumulative curve. |
 | **Photo & sample protocol** | What to photograph, how to preserve a specimen, and what a photograph genuinely cannot establish. |
 
-The modules are cross-linked: the global search box reaches both the library and the crop agronomy guides, a crop tile on the overview opens its guide, and every crop tag on a library entry opens the matching guide. Each guide ends with that crop's full reference list.
+The modules are cross-linked: the global search box reaches both the library and the crop agronomy guides, a crop tile on the overview opens its guide, every crop tag on a library entry opens the matching guide, and a guide's rotation-fit panel links into the crop-rotation planner. Each guide ends with that crop's full reference list.
 
 ---
 
@@ -156,7 +161,7 @@ Checklist for a new entry:
 
 ## Known limits
 
-- **Storage is per browser and per device.** The scouting log is not synchronised. Export the CSV before clearing browser data.
+- **Storage is per browser and per device.** The scouting log and the planned crop sequence are not synchronised. Export the CSV before clearing browser data.
 - **No image recognition.** The app is deliberately not a photo classifier; it structures the evidence a photograph must provide.
 - **Thresholds are indicative.** Values are drawn from common extension practice and must be calibrated to local cultivar, market and climate.
 - **Degree days use a simple average.** Non-linear models and upper thresholds are more accurate in extreme heat.

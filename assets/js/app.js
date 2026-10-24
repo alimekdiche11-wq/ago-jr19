@@ -30,7 +30,8 @@
     print:  '<path d="M7 8V3h10v5"/><path d="M7 18H5a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-2"/><path d="M7 14h10v7H7z"/>',
     search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
     download:'<path d="M12 3v12M7 11l5 5 5-5"/><path d="M5 21h14"/>',
-    trash:  '<path d="M4 7h16M9 7V4h6v3M6 7l1 14h10l1-14"/>'
+    trash:  '<path d="M4 7h16M9 7V4h6v3M6 7l1 14h10l1-14"/>',
+    cycle:  '<path d="M4 8h12l-3-3"/><path d="M4 8l3 3"/><path d="M20 16H8l3 3"/><path d="M20 16l-3-3"/>'
   };
 
   const icon = (name, cls) =>
@@ -71,10 +72,18 @@
   /* ---------------- state ---------------- */
 
   const LS_SCOUT = "agroscope.scout.v1";
+  const LS_SEQ = "agroscope.sequence.v1";
 
   function loadScout() {
     try { return JSON.parse(localStorage.getItem(LS_SCOUT)) || []; }
     catch (e) { return []; }
+  }
+
+  function loadSeq() {
+    try {
+      const v = JSON.parse(localStorage.getItem(LS_SEQ));
+      return Array.isArray(v) ? v.filter((id) => AGRO.cropGuides[id]) : [];
+    } catch (e) { return []; }
   }
 
   const state = {
@@ -87,9 +96,14 @@
     keyNode: AGRO.keyStart,
     rot: new Set(),
     scout: loadScout(),
+    seq: loadSeq(),
     gdd: null,
     cropGuide: null
   };
+
+  function saveSeq() {
+    try { localStorage.setItem(LS_SEQ, JSON.stringify(state.seq)); } catch (e) {}
+  }
 
   function saveScout() {
     try { localStorage.setItem(LS_SCOUT, JSON.stringify(state.scout)); }
@@ -139,6 +153,7 @@
     { route: "library",   label: "Pest & disease library", icon: "book", count: () => AGRO.pests.length },
     { route: "ipm",       label: "IPM planner", icon: "ipm" },
     { route: "rotation",  label: "Resistance rotation", icon: "rotate" },
+    { route: "sequence",  label: "Crop rotation", icon: "cycle" },
     { section: "Field tools" },
     { route: "scout",     label: "Scouting log", icon: "scout", count: () => state.scout.length },
     { route: "gdd",       label: "Degree days", icon: "gdd" },
@@ -183,6 +198,7 @@
       key: viewKey,
       ipm: viewIpm,
       rotation: viewRotation,
+      sequence: viewSequence,
       scout: viewScout,
       gdd: viewGdd,
       protocol: viewProtocol,
@@ -557,7 +573,8 @@
 
     html += '<div class="callout" style="margin-top:12px"><strong>Not a rotation plan.</strong> ' +
       "This is a library cross-check, not agronomic advice. Build the sequence around the guide's rotation note, soil, water and market — and confirm " +
-      "soilborne risk with your advisory service.</div></div>";
+      "soilborne risk with your advisory service.</div>" +
+      '<a class="btn btn-sm" href="#/sequence" style="margin-top:10px">' + icon("cycle") + "Plan a cropping sequence</a></div>";
 
     return html;
   }
@@ -662,6 +679,140 @@
       '<div class="grid g3" style="align-items:start">' +
         '<div style="grid-column:span 2">' + main + entriesCard + "</div>" +
         side +
+      "</div>";
+  }
+
+  /* ============================================================
+     VIEW: crop rotation planner
+     ============================================================ */
+
+  function sharedRisk(a, b) {
+    return AGRO.pests.filter((p) =>
+      p.kind !== "beneficial" &&
+      (p.crops || []).includes(a) && (p.crops || []).includes(b));
+  }
+
+  function familyOf(id) {
+    const c = cropOf(id);
+    return c && c.family && c.family !== "—" ? c.family : null;
+  }
+
+  function viewSequence() {
+    const seq = state.seq;
+    const options = AGRO.crops.filter((c) => AGRO.cropGuides[c.id]);
+
+    const head = '<div class="page-head"><div class="grow">' +
+        '<div class="eyebrow">Crop rotation</div>' +
+        "<h1>Plan a cropping sequence</h1>" +
+        '<p class="lede">Line up the crops you intend to grow, in order, and the app flags the transitions the library can already see: ' +
+        "back-to-back crops of the same botanical family, and pairs that share the most recorded pests and diseases.</p>" +
+      "</div>" +
+      (seq.length ? '<div class="page-actions"><button class="btn btn-ghost" data-action="seq-clear">' + icon("trash") + "Clear</button></div>" : "") +
+      "</div>";
+
+    const builder = '<div class="toolbar">' +
+        '<select id="seqCrop" aria-label="Choose a crop to add">' +
+          options.map((c) => '<option value="' + c.id + '">' + esc(c.name) + "</option>").join("") +
+        "</select>" +
+        '<button class="btn btn-primary btn-sm" data-action="seq-add">' + icon("plus") + "Add season</button>" +
+        '<span class="small muted">Add the crops in the order you intend to plant them.</span></div>';
+
+    const disclaimer = '<div class="callout" style="margin-bottom:16px"><strong>A library cross-check, not a rotation plan.</strong> ' +
+      "The flags below come only from the botanical family recorded for each crop and the crop lists already attached to each pest and disease entry. " +
+      "They cannot see soil, water, market, break-crop value or local regulation — read them together with the rotation note in each crop's agronomy guide.</div>";
+
+    if (!seq.length) {
+      return head + builder + disclaimer +
+        '<div class="empty"><h3>No sequence yet</h3>' +
+        '<p class="small">Add a first crop above. Three to five seasons is usually enough to expose the main conflicts.</p></div>';
+    }
+
+    const chips = seq.map((id, i) =>
+      '<div class="seq-chip">' +
+        '<span class="seq-n">' + (i + 1) + "</span>" +
+        '<span class="seq-name">' + esc(cropName(id)) +
+          (familyOf(id) ? '<span class="tiny muted"> · ' + esc(familyOf(id)) + "</span>" : "") +
+        "</span>" +
+        '<span class="spacer"></span>' +
+        '<button class="icon-btn" data-action="seq-up" data-index="' + i + '" aria-label="Move earlier"' + (i === 0 ? " disabled" : "") + ">" + icon("back") + "</button>" +
+        '<button class="icon-btn" data-action="seq-down" data-index="' + i + '" aria-label="Move later"' + (i === seq.length - 1 ? " disabled" : "") + ">" + icon("arrow") + "</button>" +
+        '<button class="icon-btn" data-action="seq-remove" data-index="' + i + '" aria-label="Remove this season">' + icon("trash") + "</button>" +
+      "</div>").join("");
+
+    const timeline = '<div class="card pad-lg">' +
+        '<div class="card-head"><h3>Sequence</h3><span class="spacer"></span>' +
+          '<span class="tiny muted">' + seq.length + " season" + (seq.length === 1 ? "" : "s") + "</span></div>" +
+        '<div class="seq-list">' + chips + "</div>" +
+      "</div>";
+
+    let redCount = 0, amberCount = 0;
+    const transitions = [];
+    for (let i = 1; i < seq.length; i++) {
+      const a = seq[i - 1], b = seq[i];
+      const sameFam = !!(familyOf(a) && familyOf(a) === familyOf(b));
+      const shared = sharedRisk(a, b);
+      if (sameFam) redCount++; else if (shared.length) amberCount++;
+      transitions.push({ a: a, b: b, sameFam: sameFam, shared: shared });
+    }
+
+    const transHtml = transitions.length ? transitions.map((t, i) => {
+      const level = t.sameFam ? "red" : (t.shared.length ? "amber" : "green");
+      let body;
+      if (t.sameFam) {
+        body = "<strong>Same botanical family</strong> (" + esc(familyOf(t.a)) + "). Do not follow " +
+          esc(cropName(t.a)) + " with " + esc(cropName(t.b)) + " back-to-back; they host the same soilborne and foliar problems.";
+      } else if (t.shared.length) {
+        body = "Shares <strong>" + t.shared.length + " recorded entr" + (t.shared.length === 1 ? "y" : "ies") +
+          "</strong> with the previous crop: " +
+          t.shared.slice(0, 6).map((p) => esc(p.name)).join(", ") + (t.shared.length > 6 ? ", …" : "") + ".";
+      } else {
+        body = "No pest or disease in the library is recorded on both crops — a cleaner break, other factors aside.";
+      }
+      return '<div class="transition lvl-' + level + '">' +
+          '<div class="tr-head">' +
+            '<span class="pill ' + (level === "red" ? "pill-red" : level === "amber" ? "pill-amber" : "pill-green") + '">' +
+              (i + 1) + " → " + (i + 2) + "</span>" +
+            '<span class="small strong">' + esc(cropName(t.a)) + " → " + esc(cropName(t.b)) + "</span>" +
+          "</div>" +
+          '<p class="small" style="margin:6px 0 0;color:var(--ink-700)">' + body + "</p>" +
+        "</div>";
+    }).join("") : '<p class="small muted">Add at least two seasons to check the transitions.</p>';
+
+    const checks = '<div class="card pad-lg" style="margin-top:16px">' +
+        '<div class="card-head"><h3>Transition checks</h3><span class="spacer"></span>' +
+          '<span class="pill ' + (redCount ? "pill-red" : amberCount ? "pill-amber" : "pill-green") + '">' +
+          (redCount ? redCount + " same-family" : amberCount ? amberCount + " shared-load" : "all clear") + "</span></div>" +
+        transHtml +
+      "</div>";
+
+    const counts = {};
+    seq.forEach((id) => { counts[id] = (counts[id] || 0) + 1; });
+    const repeats = Object.keys(counts).filter((id) => counts[id] > 1);
+
+    const other = '<div class="stack">' +
+        '<div class="card"><div class="card-head"><h3>Summary</h3></div>' +
+          '<ul class="small" style="margin:0;padding-left:18px;line-height:1.8;color:var(--ink-700)">' +
+            "<li>" + seq.length + " season" + (seq.length === 1 ? "" : "s") + ", " +
+              Object.keys(counts).length + " distinct crop" + (Object.keys(counts).length === 1 ? "" : "s") + ".</li>" +
+            "<li>" + (redCount ? redCount + " same-family transition" + (redCount === 1 ? "" : "s") + " to resolve." : "No same-family transition.") + "</li>" +
+            "<li>" + (repeats.length ? "Repeated crop: " + repeats.map((r) => esc(cropName(r))).join(", ") + "." : "No crop is repeated.") + "</li>" +
+          "</ul>" +
+        "</div>" +
+        '<div class="card"><div class="card-head"><h3>Read the guides</h3></div>' +
+          '<p class="small" style="color:var(--ink-700)">Each crop guide carries its own rotation note and rotation-fit panel.</p>' +
+          '<div class="stack" style="gap:8px;margin-top:8px">' +
+            seq.filter((id, i) => seq.indexOf(id) === i).map((id) =>
+              '<a class="btn btn-sm" href="#/crops/' + id + '">' + icon("leaf") + esc(cropName(id)) + " guide</a>").join("") +
+          "</div>" +
+        "</div>" +
+        '<div class="callout"><strong>Rotation is more than crop order.</strong> A good sequence manages soilborne inoculum, water and labour as much as it manages pests. ' +
+          "Break crops, cover crops and fallow are not modelled here.</div>" +
+      "</div>";
+
+    return head + builder + disclaimer +
+      '<div class="grid g3" style="align-items:start">' +
+        '<div style="grid-column:span 2">' + timeline + checks + "</div>" +
+        other +
       "</div>";
   }
 
@@ -1335,6 +1486,17 @@
     if (action === "diag-back") { state.diag.step = Math.max(0, state.diag.step - 1); render(); return; }
     if (action === "diag-run") { state.diag.step = 4; render(); return; }
     if (action === "diag-reset") { state.diag = { step: 0, crop: null, organ: null, symptoms: [], pattern: null, allSyms: false }; render(); return; }
+
+    /* crop rotation planner */
+    if (action === "seq-add") {
+      const sel = $("#seqCrop");
+      if (sel && sel.value) { state.seq.push(sel.value); saveSeq(); render(); }
+      return;
+    }
+    if (action === "seq-remove") { const i = +id; if (i >= 0) { state.seq.splice(i, 1); saveSeq(); render(); } return; }
+    if (action === "seq-up") { const i = +id; if (i > 0) { const t = state.seq[i - 1]; state.seq[i - 1] = state.seq[i]; state.seq[i] = t; saveSeq(); render(); } return; }
+    if (action === "seq-down") { const i = +id; if (i < state.seq.length - 1) { const t = state.seq[i + 1]; state.seq[i + 1] = state.seq[i]; state.seq[i] = t; saveSeq(); render(); } return; }
+    if (action === "seq-clear") { if (confirm("Clear the planned sequence?")) { state.seq = []; saveSeq(); render(); } return; }
 
     /* library */
     if (action === "lib-kind") { state.lib.kind = id; render(); return; }
