@@ -154,6 +154,7 @@ Checklist for a new entry:
 ## Accessibility and keyboard use
 
 - The interface is navigable by keyboard: a "Skip to content" link is the first focusable element, library cards and diagnosis result rows are focusable and activate with **Enter** or **Space**, and **/** jumps to the search box.
+- Library profiles, crop guides and diagnosis assessments can be printed; the print stylesheet hides interactive chrome (buttons, toolbars) and avoids breaking cards across pages.
 - The detail dialog is a labelled modal (`role="dialog"`, `aria-modal`, `aria-labelledby`): focus moves into it on open, **Tab** cycles within it, **Escape** closes it, and focus returns to the element that opened it.
 - The active navigation item carries `aria-current="page"`, and the toast is an `aria-live` status region.
 

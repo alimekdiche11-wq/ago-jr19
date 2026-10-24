@@ -413,7 +413,8 @@
         '<div><div class="eyebrow" style="margin:0">Assessment</div>' +
         '<h2 style="margin:2px 0 0">' + esc(cropName(d.crop)) + " · " + esc((AGRO.organs.find((o) => o.id === d.organ) || {}).label || "") + "</h2></div>" +
         '<span class="spacer"></span>' +
-        '<button class="btn" data-action="diag-back">' + icon("back") + "Refine</button>" +
+        '<button class="btn" data-action="print">' + icon("print") + "Print</button>" +
+        '<button class="btn btn-ghost" data-action="diag-back">' + icon("back") + "Refine</button>" +
         "</div>" +
 
         (pattern ? '<div class="callout green" style="margin-bottom:14px"><strong>Field pattern: ' + esc(pattern.label) + ".</strong> " + esc(pattern.hint) + ".</div>" : "") +

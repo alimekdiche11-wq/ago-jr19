@@ -13,7 +13,7 @@
  */
 "use strict";
 
-const CACHE = "agroscope-v4";
+const CACHE = "agroscope-v5";
 
 const SHELL = [
   "./",
