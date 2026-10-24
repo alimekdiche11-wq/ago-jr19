@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="AgroScope">
+  <rect width="512" height="512" rx="96" fill="#1f6f4a"/>
+  <path d="M256 452c0-130 44-238 174-281-21 151-65 238-174 281Z" fill="#8fd4a0"/>
+  <path d="M256 452C126 388 82 258 82 84c130 44 174 151 174 368Z" fill="#ffffff"/>
+</svg>

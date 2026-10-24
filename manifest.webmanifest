@@ -1,0 +1,15 @@
+{
+  "name": "AgroScope — Agronomy, Entomology & Plant Protection Workbench",
+  "short_name": "AgroScope",
+  "description": "Offline field diagnostic workbench: insect identification key, crop agronomy guides, pest, disease and disorder library, IPM planner, resistance rotation, scouting log and degree-day models.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#ffffff",
+  "theme_color": "#1f6f4a",
+  "icons": [
+    { "src": "assets/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "assets/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}
