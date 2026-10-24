@@ -1499,6 +1499,16 @@
 
   $("#dataStamp").textContent = "rev " + AGRO.meta.revision;
 
+  /* Offline use of the hosted copy: cache the app shell so it keeps working
+     without a network. No-op from a file:// URL, where a worker cannot run. */
+  if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("sw.js").catch(function () {
+        /* best-effort: the app already works offline from a local file */
+      });
+    });
+  }
+
   window.addEventListener("hashchange", render);
   if (!location.hash) location.hash = "#/dashboard";
   render();

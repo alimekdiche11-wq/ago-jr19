@@ -6,7 +6,7 @@ A self-contained field reference and diagnostic workbench for crop protection, b
 
 A hosted copy is also published via GitHub Pages: **https://alimekdiche11-wq.github.io/ago-jr19/** (same static files, no server or build step).
 
-When served over HTTP(S) it can be installed as a standalone web app from the browser (it ships a `manifest.webmanifest` and an SVG icon); from a local file it simply opens as an ordinary offline page.
+When served over HTTP(S) it can be installed as a standalone web app from the browser (it ships a `manifest.webmanifest` and an SVG icon), and a service worker (`sw.js`) caches the app shell so the hosted copy keeps working with no network after the first visit. From a local file it simply opens as an ordinary offline page.
 
 ---
 
@@ -48,6 +48,8 @@ Recommendations remain location-dependent. Always re-check local registration, r
 ```
 index.html                  application shell
 manifest.webmanifest        web app manifest (installable, standalone display)
+sw.js                       service worker: offline app shell for the hosted copy
+LICENSE                     MIT licence
 assets/icon.svg             app icon (also the favicon/apple-touch icon)
 assets/css/app.css          design system and layout
 assets/js/data-core.js      crops, organs, symptom taxonomy, key, MoA table, GDD presets
