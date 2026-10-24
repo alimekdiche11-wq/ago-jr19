@@ -4,6 +4,8 @@ A self-contained field reference and diagnostic workbench for crop protection, b
 
 **Open `index.html`** in any modern browser. That is the whole installation.
 
+A hosted copy is also published via GitHub Pages: **https://alimekdiche11-wq.github.io/ago-jr19/** (same static files, no server or build step).
+
 ---
 
 ## What it does
