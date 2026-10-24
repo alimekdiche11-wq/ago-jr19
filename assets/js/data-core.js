@@ -131,7 +131,6 @@ AGRO.symptoms = [
 
   /* shoot */
   { id:"dieback",          label:"Shoot dieback from the tip", group:"shoot" },
-  { id:"galling",          label:"Galls, knots or swellings", group:"shoot" },
   { id:"exit-holes",       label:"Exit holes with frass or sawdust", group:"shoot" },
   { id:"tip-boring",       label:"Dead central shoot / bored growing point", group:"shoot" },
 
@@ -162,7 +161,6 @@ AGRO.symptoms = [
   /* root */
   { id:"root-galls",       label:"Root galls or knots", group:"root" },
   { id:"root-rot",         label:"Brown, mushy or rotted roots", group:"root" },
-  { id:"white-mycelium",   label:"White mycelium / sclerotia on roots or stem base", group:"root" },
 
   /* whole */
   { id:"stunting",         label:"Stunting or poor vigour", group:"whole" },
@@ -172,8 +170,7 @@ AGRO.symptoms = [
 
   /* storage */
   { id:"store-rot",        label:"Rot, mould or off-odour in store", group:"storage" },
-  { id:"store-insects",    label:"Live insects, dust or exit holes in stored produce", group:"storage" },
-  { id:"sprouting",        label:"Premature sprouting or shrivelling", group:"storage" }
+  { id:"store-insects",    label:"Live insects, dust or exit holes in stored produce", group:"storage" }
 ];
 
 AGRO.patterns = [

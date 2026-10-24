@@ -263,7 +263,7 @@ AGRO.pests.push(
   order:"Coleoptera", family:"Curculionidae",
   crops:["datepalm"],
   organs:["stem","shoot","whole"],
-  symptoms:["exit-holes","dieback","collapse","tip-boring"],
+  symptoms:["exit-holes","dieback","collapse","tip-boring","stem-boring"],
   stage:"Larvae boring inside the trunk; adults are the dispersive stage",
   tagline:"A lethal, hidden borer: by the time symptoms show, the palm is usually lost.",
   bio:"Adults are large (25–40 mm), reddish-brown, with a long rostrum. Females lay 200–500 eggs in wounds or leaf bases. Larvae tunnel through the trunk, destroying vascular tissue. Pupation in a fibrous cocoon inside the trunk. Multiple overlapping generations; development is faster in hot climates.",

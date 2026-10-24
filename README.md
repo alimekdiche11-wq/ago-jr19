@@ -54,9 +54,26 @@ assets/js/data-disorders.js abiotic, nutritional and physiological disorders
 assets/js/data-guides.js    crop agronomy guides (climate, soil, planting, water, nutrition, harvest, storage)
 assets/js/data-ipm.js       seasonal IPM programmes and principles
 assets/js/app.js            routing, views, diagnostic engine, local storage
+tools/audit-dataset.js      dataset integrity audit (Node, no dependencies)
 ```
 
 Classic scripts attached to a `window.AGRO` namespace, so the app also works from a `file://` URL where ES modules would be blocked.
+
+---
+
+## Dataset audit
+
+The data scripts are cross-referenced by id, so a typo can silently make an entry
+unreachable. A small Node script checks the whole dataset — unique ids, resolvable
+crop/organ/symptom references, required fields, severity range, complete chemistry
+and lookalikes, guide completeness and orphan symptoms:
+
+```sh
+node tools/audit-dataset.js
+```
+
+It prints the counts and any issues, and exits non-zero if the dataset is not
+clean. It has no dependencies and does not touch the browser build.
 
 ---
 

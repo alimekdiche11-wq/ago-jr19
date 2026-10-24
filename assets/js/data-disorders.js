@@ -187,7 +187,7 @@ AGRO.pests.push(
 {
   id:"b-deficiency-toxicity", kind:"disorder", type:"Nutritional",
   name:"Boron deficiency and toxicity", sci:"—", fr:"Carence et toxicité du bore",
-  crops:["olive","citrus","apple","pome","grape","datepalm","onion","cucurbits","stonefruit"],
+  crops:["olive","citrus","pome","grape","datepalm","onion","cucurbits","stonefruit"],
   organs:["leaf","fruit","shoot","root"],
   symptoms:["distortion","sunken-lesion","stunting","dieback","necrotic-spots"],
   stage:"Active growth and fruit set",
