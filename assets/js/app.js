@@ -1236,11 +1236,21 @@
           "</form>" +
         "</div>" +
 
-        '<div class="card"><div class="card-head"><h3>Last 14 counts</h3></div>' +
-          (chart || '<p class="small muted">No data yet.</p>') +
-          '<hr class="sep" style="margin:14px 0">' +
-          '<div class="small muted">Records: <strong>' + state.scout.length + "</strong><br>Mean count: <strong>" +
-            (state.scout.length ? (state.scout.reduce((s, r) => s + (Number(r.count) || 0), 0) / state.scout.length).toFixed(1) : "—") + "</strong></div>" +
+        '<div class="stack">' +
+          '<div class="card"><div class="card-head"><h3>Last 14 counts</h3></div>' +
+            (chart || '<p class="small muted">No data yet.</p>') +
+            '<hr class="sep" style="margin:14px 0">' +
+            '<div class="small muted">Records: <strong>' + state.scout.length + "</strong><br>Mean count: <strong>" +
+              (state.scout.length ? (state.scout.reduce((s, r) => s + (Number(r.count) || 0), 0) / state.scout.length).toFixed(1) : "—") + "</strong></div>" +
+          "</div>" +
+          '<div class="card"><div class="card-head"><h3>Backup &amp; restore</h3></div>' +
+            '<p class="small" style="color:var(--ink-700)">Your records and the planned rotation live only in this browser. Keep a JSON backup to move them to another device or to survive a cleared cache.</p>' +
+            '<div class="stack" style="gap:8px;margin-top:8px">' +
+              '<button class="btn btn-sm" data-action="backup-all">' + icon("download") + "Back up all data</button>" +
+              '<label class="btn btn-sm" style="cursor:pointer;justify-content:center">' + icon("plus") + "Restore from backup" +
+                '<input id="importFile" data-action="import-file" type="file" accept="application/json,.json" class="hidden"></label>' +
+            "</div>" +
+          "</div>" +
         "</div>" +
       "</div>" +
 
@@ -1551,6 +1561,7 @@
       return;
     }
     if (action === "scout-export") { exportScout(); return; }
+    if (action === "backup-all") { exportAll(); return; }
 
     /* gdd */
     if (action === "gdd-run") { runGdd(); return; }
@@ -1563,6 +1574,10 @@
     const action = el.getAttribute("data-action");
 
     if (action === "lib-crop") { state.lib.crop = el.value; render(); return; }
+    if (action === "import-file") {
+      if (el.files && el.files[0]) { importAll(el.files[0]); el.value = ""; }
+      return;
+    }
     if (action === "crops-crop") { state.cropGuide = el.value; location.hash = "#/crops/" + el.value; return; }
     if (action === "ipm-crop") { location.hash = "#/ipm/" + el.value; return; }
     if (action === "rot-toggle") {
@@ -1662,8 +1677,50 @@
     toast("CSV exported.");
   }
 
-  /* ---------------- degree days ---------------- */
+  /* ---------------- backup & restore ---------------- */
 
+  function downloadBlob(blob, name) {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+
+  function exportAll() {
+    const payload = {
+      app: "AgroScope",
+      schema: 1,
+      exportedAt: new Date().toISOString(),
+      scout: state.scout,
+      sequence: state.seq
+    };
+    downloadBlob(new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" }),
+      "agroscope-backup-" + new Date().toISOString().slice(0, 10) + ".json");
+    toast("Backup file saved.");
+  }
+
+  function importAll(file) {
+    const reader = new FileReader();
+    reader.onload = function () {
+      try {
+        const d = JSON.parse(reader.result);
+        if (!d || d.app !== "AgroScope") throw new Error("not an AgroScope backup");
+        if (Array.isArray(d.scout)) state.scout = d.scout;
+        if (Array.isArray(d.sequence)) state.seq = d.sequence.filter((id) => AGRO.cropGuides[id]);
+        saveScout();
+        saveSeq();
+        render();
+        toast("Backup restored.");
+      } catch (err) {
+        toast("That file is not a valid AgroScope backup.");
+      }
+    };
+    reader.onerror = function () { toast("Could not read the file."); };
+    reader.readAsText(file);
+  }
+
+  /* ---------------- degree days ---------------- */
   function runGdd() {
     const base = parseFloat($("#gddBase").value);
     const raw = $("#gddData").value.trim();

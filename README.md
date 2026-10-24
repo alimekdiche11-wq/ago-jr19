@@ -31,7 +31,7 @@ When served over HTTP(S) it can be installed as a standalone web app from the br
 | **IPM planner** | Seasonal programme by crop and phenological stage, organised as prevention → monitoring → biological → cultural → chemical. |
 | **Crop rotation** | Build a sequence of crops and check the transitions: same-family back-to-back pairs and pairs sharing the most recorded pests and diseases. Saved per device. |
 | **Resistance rotation** | IRAC / FRAC / HRAC group tracker with selection-pressure risk ratings and rotation rules. |
-| **Scouting log** | Field observations stored locally, with a trend chart and CSV export. |
+| **Scouting log** | Field observations stored locally, with a trend chart, CSV export, and a JSON backup/restore that also carries the planned rotation. |
 | **Degree days** | Accumulates heat units from daily minimum/maximum temperatures using the simple-average method, with pest presets and a cumulative curve. |
 | **Photo & sample protocol** | What to photograph, how to preserve a specimen, and what a photograph genuinely cannot establish. |
 
@@ -153,7 +153,7 @@ Checklist for a new entry:
 
 ## Accessibility and keyboard use
 
-- The interface is navigable by keyboard: library cards and diagnosis result rows are focusable and activate with **Enter** or **Space**. Press **/** anywhere to jump to the search box.
+- The interface is navigable by keyboard: a "Skip to content" link is the first focusable element, library cards and diagnosis result rows are focusable and activate with **Enter** or **Space**, and **/** jumps to the search box.
 - The detail dialog is a labelled modal (`role="dialog"`, `aria-modal`, `aria-labelledby`): focus moves into it on open, **Tab** cycles within it, **Escape** closes it, and focus returns to the element that opened it.
 - The active navigation item carries `aria-current="page"`, and the toast is an `aria-live` status region.
 
@@ -161,7 +161,7 @@ Checklist for a new entry:
 
 ## Known limits
 
-- **Storage is per browser and per device.** The scouting log and the planned crop sequence are not synchronised. Export the CSV before clearing browser data.
+- **Storage is per browser and per device.** The scouting log and the planned crop sequence are not synchronised. Export the CSV (or a full JSON backup from the scouting log) before clearing browser data.
 - **No image recognition.** The app is deliberately not a photo classifier; it structures the evidence a photograph must provide.
 - **Thresholds are indicative.** Values are drawn from common extension practice and must be calibrated to local cultivar, market and climate.
 - **Degree days use a simple average.** Non-linear models and upper thresholds are more accurate in extreme heat.
