@@ -508,6 +508,7 @@
         '<h2 style="margin:2px 0 0">' + esc(cropName(d.crop)) + " · " + esc((AGRO.organs.find((o) => o.id === d.organ) || {}).label || "") + "</h2></div>" +
         '<span class="spacer"></span>' +
         '<button class="btn" data-action="diag-link">' + icon("link") + "Copy link</button>" +
+        '<button class="btn" data-action="diag-csv">' + icon("download") + "CSV</button>" +
         '<button class="btn" data-action="print">' + icon("print") + "Print</button>" +
         '<button class="btn btn-ghost" data-action="diag-back">' + icon("back") + "Refine</button>" +
         "</div>" +
@@ -518,6 +519,11 @@
           (AGRO.cropGuides[d.crop] ? '<a class="btn btn-sm" href="#/crops/' + d.crop + '">' + icon("leaf") + "Agronomy guide</a>" : "") +
           '<a class="btn btn-sm" href="#/library/' + d.crop + '/all">' + icon("book") + "All entries for " + esc(cropName(d.crop)) + "</a>" +
         "</div>" +
+
+        '<p class="small muted" role="status" style="margin:0 0 10px">' +
+          results.length + " candidate" + (results.length === 1 ? "" : "s") +
+          (results.length > top.length ? " matched; the " + top.length + " closest are shown below." : " matched, closest fit first.") +
+        "</p>" +
 
         (top.length ? top.map((r) => resultRow(r)).join("") :
           '<div class="empty"><h3>No candidate matched</h3><p class="small">Try a different organ or fewer symptoms. The library may still describe the organism.</p></div>') +
@@ -532,7 +538,16 @@
           "</ul></div>" +
 
         '<div class="callout" style="margin-top:16px"><strong>Confidence is not certainty.</strong> ' +
-          "Percentage scores express how well the observed characters fit each candidate, not the probability that the diagnosis is correct.</div>";
+          "Percentage scores express how well the observed characters fit each candidate, not the probability that the diagnosis is correct.</div>" +
+
+        /* Printed only: a sheet taken to the field should carry its own
+           provenance, so anyone reading it can reopen the exact answers. */
+        '<div class="print-only" style="margin-top:18px;border-top:1px solid var(--line);padding-top:8px">' +
+          '<div class="tiny">AgroScope — differential diagnosis assessment, printed ' + new Date().toISOString().slice(0, 10) +
+            ". Scores express fit to the observed characters, not the probability that a diagnosis is correct. " +
+            "Any pesticide application is governed by the national label.</div>" +
+          '<div class="tiny" style="margin-top:4px">Answers: ' + esc(diagShareUrl()) + "</div>" +
+        "</div>";
     }
 
     return header + stepper + body;
@@ -1582,6 +1597,7 @@
     if (action === "help") { openModal(shortcutsModal()); return; }
     if (action === "theme") { setTheme(currentTheme() === "dark" ? "light" : "dark"); return; }
     if (action === "diag-link") { copyText(diagShareUrl(), "Diagnosis link copied."); return; }
+    if (action === "diag-csv") { exportDiag(); return; }
 
     /* diagnosis */
     if (action === "diag-crop") { state.diag.crop = id; state.diag.step = 1; render(); return; }
@@ -1803,6 +1819,37 @@
     if (d.symptoms.length) q.set("symptoms", d.symptoms.join(","));
     if (d.pattern) q.set("pattern", d.pattern);
     return location.href.split("#")[0] + "#/diagnose?" + q.toString();
+  }
+
+  /* The assessment as CSV, built only from the ranking the app already
+     computed. Kept as a pure string builder so the exact output can be
+     inspected without going through the download plumbing. */
+  function diagCsvText() {
+    const d = state.diag;
+    const rows = diagnose().slice(0, 6);
+    const cell = (v) => '"' + String(v == null ? "" : v).replace(/"/g, '""') + '"';
+    const organ = (AGRO.organs.find((o) => o.id === d.organ) || {}).label || "";
+    const pattern = (AGRO.patterns.find((p) => p.id === d.pattern) || {}).label || "";
+    const head = ["rank", "candidate", "scientific_name", "kind", "fit_percent",
+      "matched_symptoms", "organ_listed", "crop", "organ", "symptoms_assessed",
+      "field_pattern", "fit_note", "answers_link"];
+    const lines = [head.map(cell).join(",")].concat(rows.map((r, i) => {
+      const matched = (r.p.symptoms || []).filter((s) => d.symptoms.includes(s)).map(symLabel);
+      const sci = r.p.sci && r.p.sci !== "—" ? r.p.sci : "";
+      return [i + 1, r.p.name, sci, KIND_LABEL[r.p.kind] || r.p.kind, r.pct,
+        matched.join("; "),
+        (r.p.organs || []).includes(d.organ) ? "yes" : "no",
+        cropName(d.crop), organ, d.symptoms.map(symLabel).join("; "), pattern,
+        "fit score, not probability", diagShareUrl()].map(cell).join(",");
+    }));
+    return "\ufeff" + lines.join("\r\n");
+  }
+
+  function exportDiag() {
+    if (!diagnose().length) { toast("Nothing to export — no candidate matched."); return; }
+    downloadBlob(new Blob([diagCsvText()], { type: "text/csv;charset=utf-8;" }),
+      "agroscope-assessment-" + new Date().toISOString().slice(0, 10) + ".csv");
+    toast("Assessment CSV exported.");
   }
 
   function copyText(text, okMsg) {

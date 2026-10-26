@@ -39,7 +39,7 @@ When served over HTTP(S) it can be installed as a standalone web app from the br
 | **Degree days** | Accumulates heat units from daily minimum/maximum temperatures using the simple-average method, with pest presets and a cumulative curve. |
 | **Photo & sample protocol** | What to photograph, how to preserve a specimen, and what a photograph genuinely cannot establish. |
 
-The modules are cross-linked: the global search box reaches both the library and the crop agronomy guides, a crop tile on the overview opens its guide, every crop tag on a library entry opens the matching guide, and a guide's rotation-fit panel links into the crop-rotation planner. Each guide ends with that crop's full reference list. A diagnosis assessment also carries a **Copy link** button: the answers are encoded in the URL fragment, so the same differential reopens on another device or from a shared file, and unknown or stale ids are simply ignored.
+The modules are cross-linked: the global search box reaches both the library and the crop agronomy guides, a crop tile on the overview opens its guide, every crop tag on a library entry opens the matching guide, and a guide's rotation-fit panel links into the crop-rotation planner. Each guide ends with that crop's full reference list. A diagnosis assessment also carries a **Copy link** button: the answers are encoded in the URL fragment, so the same differential reopens on another device or from a shared file, and unknown or stale ids are simply ignored. The same assessment can be exported as **CSV** — one row per candidate with its fit score, the symptoms that matched, the organ and field pattern assessed, and the link that reopens it — or printed, in which case the sheet carries its own date and answers link at the bottom so a page on paper can still be traced back to the exact inputs.
 
 ---
 
@@ -161,7 +161,7 @@ Checklist for a new entry:
 
 - The interface is navigable by keyboard: a "Skip to content" link is the first focusable element, library cards and diagnosis result rows are focusable and activate with **Enter** or **Space**, and **/** jumps to the search box.
 - A shortcut list is available from the **?** key or the help button in the top bar: `/`, `?`, `Esc`, `Enter`/`Space` and `Tab`.
-- Library profiles, crop guides and diagnosis assessments can be printed; the print stylesheet hides interactive chrome (buttons, toolbars) and avoids breaking cards across pages.
+- Library profiles, crop guides and diagnosis assessments can be printed; the print stylesheet hides interactive chrome (buttons, toolbars) and avoids breaking cards across pages. A printed assessment adds a footer that only paper shows: the print date, the reminder that scores are fit and not probability, and the link that reopens the same answers.
 - The detail dialog is a labelled modal (`role="dialog"`, `aria-modal`, `aria-labelledby`): focus moves into it on open, **Tab** cycles within it, **Escape** closes it, and focus returns to the element that opened it.
 - The active navigation item carries `aria-current="page"`, and the toast is an `aria-live` status region.
 - A light/dark **theme toggle** sits in the top bar (moon/sun). The choice is remembered per browser in `localStorage` (`agroscope.theme`) and applied before first paint so there is no flash; with no saved choice the app follows the operating-system setting. Printed output always uses the light palette.

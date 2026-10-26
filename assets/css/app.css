@@ -684,6 +684,14 @@ button:focus-visible,
   .result .res-score { display: none; }
 }
 
+/* Content that exists only on paper: provenance lines that would be noise
+   on screen, such as the assessment date and the link that reopens it. */
+.print-only { display: none; }
+
+@media print {
+  .print-only { display: block; }
+}
+
 @media print {
   .sidebar, .topbar, .foot, .modal-x, .modal-backdrop { display: none !important; }
   .page-actions, .toolbar, .skip-link, .btn { display: none !important; }
