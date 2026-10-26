@@ -28,6 +28,7 @@
     arrow:  '<path d="M5 12h14M13 6l6 6-6 6"/>',
     back:   '<path d="M19 12H5M11 18l-6-6 6-6"/>',
     print:  '<path d="M7 8V3h10v5"/><path d="M7 18H5a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-2"/><path d="M7 14h10v7H7z"/>',
+    link:   '<path d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1"/>',
     search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
     download:'<path d="M12 3v12M7 11l5 5 5-5"/><path d="M5 21h14"/>',
     trash:  '<path d="M4 7h16M9 7V4h6v3M6 7l1 14h10l1-14"/>',
@@ -222,12 +223,35 @@
 
   function parseHash() {
     const raw = location.hash.replace(/^#\/?/, "");
-    const bits = raw.split("/");
+    const qi = raw.indexOf("?");
+    const path = qi === -1 ? raw : raw.slice(0, qi);
+    const bits = path.split("/");
     return {
       route: bits[0] || "dashboard",
       param: bits[1] ? decodeURIComponent(bits[1]) : null,
-      sub: bits[2] ? decodeURIComponent(bits[2]) : null
+      sub: bits[2] ? decodeURIComponent(bits[2]) : null,
+      params: new URLSearchParams(qi === -1 ? "" : raw.slice(qi + 1))
     };
+  }
+
+  /* A shared diagnosis link carries its answers in the hash query, e.g.
+     #/diagnose?crop=citrus&organ=leaf&symptoms=chlorosis&pattern=whole.
+     Rebuild the wizard state from it, stopping at the furthest complete step
+     so a partially filled link still behaves sensibly. */
+  function hydrateDiag(params) {
+    const crop = params.get("crop");
+    if (!AGRO.crops.some((c) => c.id === crop)) return;
+    const d = { step: 1, crop: crop, organ: null, symptoms: [], pattern: null, allSyms: false };
+    const organ = params.get("organ");
+    if (AGRO.organs.some((o) => o.id === organ)) { d.organ = organ; d.step = 2; }
+    const syms = (params.get("symptoms") || "").split(",").map((s) => s.trim())
+      .filter((id) => AGRO.symptoms.some((s) => s.id === id));
+    if (d.organ && syms.length) { d.symptoms = syms; d.step = 3; }
+    const pattern = params.get("pattern");
+    if (d.symptoms.length && AGRO.patterns.some((p) => p.id === pattern)) {
+      d.pattern = pattern; d.step = 4;
+    }
+    state.diag = d;
   }
 
   function render() {
@@ -235,6 +259,18 @@
     state.route = r.route;
     state.param = r.param;
     state.sub = r.sub;
+    state.params = r.params;
+
+    /* Apply a shared diagnosis link once per distinct query. Later re-renders
+       (after an answer) keep the hash unchanged, so they must not re-hydrate
+       and undo what the user just changed. */
+    if (r.route === "diagnose") {
+      const shareKey = "diagnose?" + r.params.toString();
+      if (r.params.has("crop") && state._diagShareKey !== shareKey) hydrateDiag(r.params);
+      state._diagShareKey = shareKey;
+    } else {
+      state._diagShareKey = null;
+    }
 
     const views = {
       dashboard: viewDashboard,
@@ -471,6 +507,7 @@
         '<div><div class="eyebrow" style="margin:0">Assessment</div>' +
         '<h2 style="margin:2px 0 0">' + esc(cropName(d.crop)) + " · " + esc((AGRO.organs.find((o) => o.id === d.organ) || {}).label || "") + "</h2></div>" +
         '<span class="spacer"></span>' +
+        '<button class="btn" data-action="diag-link">' + icon("link") + "Copy link</button>" +
         '<button class="btn" data-action="print">' + icon("print") + "Print</button>" +
         '<button class="btn btn-ghost" data-action="diag-back">' + icon("back") + "Refine</button>" +
         "</div>" +
@@ -1544,6 +1581,7 @@
     if (action === "print") { window.print(); return; }
     if (action === "help") { openModal(shortcutsModal()); return; }
     if (action === "theme") { setTheme(currentTheme() === "dark" ? "light" : "dark"); return; }
+    if (action === "diag-link") { copyText(diagShareUrl(), "Diagnosis link copied."); return; }
 
     /* diagnosis */
     if (action === "diag-crop") { state.diag.crop = id; state.diag.step = 1; render(); return; }
@@ -1753,6 +1791,38 @@
     a.download = name;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+
+  /* ---------------- share a diagnosis ---------------- */
+
+  function diagShareUrl() {
+    const d = state.diag;
+    const q = new URLSearchParams();
+    q.set("crop", d.crop);
+    if (d.organ) q.set("organ", d.organ);
+    if (d.symptoms.length) q.set("symptoms", d.symptoms.join(","));
+    if (d.pattern) q.set("pattern", d.pattern);
+    return location.href.split("#")[0] + "#/diagnose?" + q.toString();
+  }
+
+  function copyText(text, okMsg) {
+    const fail = function () {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.setAttribute("readonly", "");
+      ta.style.cssText = "position:fixed;top:-1000px;left:-1000px";
+      document.body.appendChild(ta);
+      ta.select();
+      let ok = false;
+      try { ok = document.execCommand("copy"); } catch (e) {}
+      ta.remove();
+      toast(ok ? okMsg : "Copy failed — select the address bar and copy the link.");
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { toast(okMsg); }, fail);
+    } else {
+      fail();
+    }
   }
 
   function exportAll() {

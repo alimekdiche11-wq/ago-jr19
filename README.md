@@ -28,7 +28,7 @@ When served over HTTP(S) it can be installed as a standalone web app from the br
 
 | Module | Purpose |
 |---|---|
-| **Diagnose a problem** | Structured path: crop → organ → symptoms → field pattern → ranked differential diagnosis with an explicit confidence statement and a confirmation protocol. Abiotic, nutritional and physiological disorders are ranked alongside pests and pathogens. |
+| **Diagnose a problem** | Structured path: crop → organ → symptoms → field pattern → ranked differential diagnosis with an explicit confidence statement and a confirmation protocol. Abiotic, nutritional and physiological disorders are ranked alongside pests and pathogens. Any completed assessment can be copied as a **shareable link** that reopens exactly that set of answers. |
 | **Identification key** | Dichotomous key to the arthropod orders and families of agricultural importance, including common larval forms, with diagnostic characters and the limits of each determination. |
 | **Crop agronomy** | Per-crop guide: climate, soil, variety and cultivar choice, planting window and density, irrigation, nutrition, harvest, storage, rotation and key risks — followed by that crop's reference entries. The agronomic context that has to be right before a crop problem can even be interpreted. Each guide also shows a **rotation fit** panel computed from the library: which other crops share the botanical family, and which share the most pest and disease associations. |
 | **Pest & disease library** | 73 entries: biology, damage, favourable conditions, monitoring, action thresholds, status in Algeria, IPM measures, chemistry by IRAC/FRAC group, resistance notes and lookalike species. Includes 13 abiotic, nutritional and physiological disorders. |
@@ -39,7 +39,7 @@ When served over HTTP(S) it can be installed as a standalone web app from the br
 | **Degree days** | Accumulates heat units from daily minimum/maximum temperatures using the simple-average method, with pest presets and a cumulative curve. |
 | **Photo & sample protocol** | What to photograph, how to preserve a specimen, and what a photograph genuinely cannot establish. |
 
-The modules are cross-linked: the global search box reaches both the library and the crop agronomy guides, a crop tile on the overview opens its guide, every crop tag on a library entry opens the matching guide, and a guide's rotation-fit panel links into the crop-rotation planner. Each guide ends with that crop's full reference list.
+The modules are cross-linked: the global search box reaches both the library and the crop agronomy guides, a crop tile on the overview opens its guide, every crop tag on a library entry opens the matching guide, and a guide's rotation-fit panel links into the crop-rotation planner. Each guide ends with that crop's full reference list. A diagnosis assessment also carries a **Copy link** button: the answers are encoded in the URL fragment, so the same differential reopens on another device or from a shared file, and unknown or stale ids are simply ignored.
 
 ---
 
@@ -81,7 +81,7 @@ docs/*.png                  README screenshots
 
 Classic scripts attached to a `window.AGRO` namespace, so the app also works from a `file://` URL where ES modules would be blocked.
 
-Asset URLs in `index.html` carry a version query (`?v=12`). When you ship a change, bump that query, the `CACHE` constant in `sw.js` and the matching entries in the service worker's `SHELL` list together, so browsers and the offline cache both pick up the new files.
+Asset URLs in `index.html` carry a version query (`?v=13`). When you ship a change, bump that query, the `CACHE` constant in `sw.js` and the matching entries in the service worker's `SHELL` list together, so browsers and the offline cache both pick up the new files.
 
 ---
 
