@@ -253,6 +253,7 @@
 
     const fn = views[state.route] || viewDashboard;
     const routeChanged = state._rendered !== state.route;
+    const focusInView = $("#view").contains(document.activeElement);
     renderNav();
     $("#view").innerHTML = fn();
 
@@ -260,6 +261,17 @@
     if (active) active.classList.add("active");
 
     if (routeChanged) { window.scrollTo(0, 0); state._rendered = state.route; }
+
+    /* The diagnosis and key wizards replace their whole view on every answer.
+       If the control that was just used disappeared, move focus to the new
+       step heading so keyboard and screen-reader users do not fall back to the
+       body. Other views re-render while focus sits in the top bar (the search
+       field), so the guard keeps typing undisturbed. */
+    if (focusInView && (state.route === "diagnose" || state.route === "key") &&
+        document.activeElement === document.body) {
+      const h = $("#view").querySelector("h2") || $("#view").querySelector("h1");
+      if (h) { h.setAttribute("tabindex", "-1"); h.focus(); }
+    }
 
     if (state.route === "library" && state.param) {
       const crop = cropOf(state.param);

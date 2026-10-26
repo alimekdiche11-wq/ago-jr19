@@ -81,7 +81,7 @@ docs/*.png                  README screenshots
 
 Classic scripts attached to a `window.AGRO` namespace, so the app also works from a `file://` URL where ES modules would be blocked.
 
-Asset URLs in `index.html` carry a version query (`?v=10`). When you ship a change, bump that query, the `CACHE` constant in `sw.js` and the matching entries in the service worker's `SHELL` list together, so browsers and the offline cache both pick up the new files.
+Asset URLs in `index.html` carry a version query (`?v=12`). When you ship a change, bump that query, the `CACHE` constant in `sw.js` and the matching entries in the service worker's `SHELL` list together, so browsers and the offline cache both pick up the new files.
 
 ---
 
@@ -166,6 +166,7 @@ Checklist for a new entry:
 - The active navigation item carries `aria-current="page"`, and the toast is an `aria-live` status region.
 - A light/dark **theme toggle** sits in the top bar (moon/sun). The choice is remembered per browser in `localStorage` (`agroscope.theme`) and applied before first paint so there is no flash; with no saved choice the app follows the operating-system setting. Printed output always uses the light palette.
 - Keyboard focus is drawn with a consistent two-pixel ring on links, buttons and the focusable cards and result rows; the ring adapts to both themes.
+- In the diagnosis and identification-key wizards, focus moves to the new step heading after each answer, so keyboard and screen-reader users never lose their place when the view is rebuilt.
 - `prefers-reduced-motion: reduce` is honoured: transitions and animations are effectively disabled for readers who ask the system for less motion.
 
 ---
