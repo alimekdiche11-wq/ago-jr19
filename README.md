@@ -6,6 +6,10 @@ A self-contained field reference and diagnostic workbench for crop protection, b
 
 ![The overview screen](docs/dashboard.png)
 
+The same overview in the dark theme, reachable from the toggle in the top bar:
+
+![The overview screen in the dark theme](docs/dashboard-dark.png)
+
 The differential-diagnosis assessment, which ranks candidates and states what would confirm each one:
 
 ![Diagnosis assessment](docs/diagnosis.png)
@@ -77,7 +81,7 @@ docs/*.png                  README screenshots
 
 Classic scripts attached to a `window.AGRO` namespace, so the app also works from a `file://` URL where ES modules would be blocked.
 
-Asset URLs in `index.html` carry a version query (`?v=9`). When you ship a change, bump that query, the `CACHE` constant in `sw.js` and the matching entries in the service worker's `SHELL` list together, so browsers and the offline cache both pick up the new files.
+Asset URLs in `index.html` carry a version query (`?v=10`). When you ship a change, bump that query, the `CACHE` constant in `sw.js` and the matching entries in the service worker's `SHELL` list together, so browsers and the offline cache both pick up the new files.
 
 ---
 
@@ -161,6 +165,8 @@ Checklist for a new entry:
 - The detail dialog is a labelled modal (`role="dialog"`, `aria-modal`, `aria-labelledby`): focus moves into it on open, **Tab** cycles within it, **Escape** closes it, and focus returns to the element that opened it.
 - The active navigation item carries `aria-current="page"`, and the toast is an `aria-live` status region.
 - A light/dark **theme toggle** sits in the top bar (moon/sun). The choice is remembered per browser in `localStorage` (`agroscope.theme`) and applied before first paint so there is no flash; with no saved choice the app follows the operating-system setting. Printed output always uses the light palette.
+- Keyboard focus is drawn with a consistent two-pixel ring on links, buttons and the focusable cards and result rows; the ring adapts to both themes.
+- `prefers-reduced-motion: reduce` is honoured: transitions and animations are effectively disabled for readers who ask the system for less motion.
 
 ---
 

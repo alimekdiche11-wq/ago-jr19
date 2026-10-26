@@ -593,6 +593,29 @@ hr.sep { border: 0; border-top: 1px solid var(--line); margin: 20px 0; }
 .skip-link:focus { transform: none; outline: 2px solid #9dc9b2; outline-offset: 2px; }
 .linklike { background: none; border: 0; padding: 0; color: var(--green-700); cursor: pointer; font-weight: 550; text-decoration: underline; text-underline-offset: 3px; }
 
+/* Consistent keyboard focus. Inputs and selects already draw their own ring
+   via box-shadow, so they are left alone to avoid a double outline. */
+a:focus-visible,
+button:focus-visible,
+[tabindex]:focus-visible,
+.crop-tile:focus-visible,
+.lib-card:focus-visible,
+.result:focus-visible,
+.opt:focus-visible,
+.key-opt:focus-visible {
+  outline: 2px solid var(--green-600);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 .bars { display: flex; align-items: flex-end; gap: 3px; height: 64px; }
 .bars .b { flex: 1 1 0; max-width: 30px; background: linear-gradient(180deg, #4bb083, #24855b); border-radius: 3px 3px 0 0; min-height: 2px; position: relative; }
 .bars .b.thr { background: linear-gradient(180deg, #f0a03a, #d97706); }
