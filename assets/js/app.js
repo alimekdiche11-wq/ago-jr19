@@ -43,6 +43,10 @@
   const esc = (s) => String(s == null ? "" : s)
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
+  /* "1 reference entry" / "3 reference entries" — counts appear in several
+     places and a wrong plural reads like a bug. */
+  const plural = (n, one, many) => n + " " + (n === 1 ? one : many);
+
   const cropOf = (id) => AGRO.crops.find((c) => c.id === id);
   const cropName = (id) => (cropOf(id) ? cropOf(id).name : id);
   const symLabel = (id) => {
@@ -399,7 +403,7 @@
         '<div class="ct-top"><span class="ct-name">' + esc(c.name) + "</span>" +
         '<span class="crop-glyph">' + esc(c.mono) + "</span></div>" +
         '<span class="ct-sci">' + esc(c.sci) + "</span>" +
-        '<span class="ct-meta">' + n + " reference entries · agronomy guide</span>" +
+        '<span class="ct-meta">' + plural(n, "reference entry", "reference entries") + " · agronomy guide</span>" +
         "</a>";
     }).join("");
 
@@ -418,9 +422,9 @@
         '<a class="btn" href="#/library">' + icon("book") + "Browse the library</a>" +
       "</div>" +
       '<div class="hero-chips">' +
-        '<span class="pill">' + AGRO.pests.length + " reference entries</span>" +
-        '<span class="pill">' + AGRO.pests.filter((p) => p.kind === "disorder").length + " abiotic disorders</span>" +
-        '<span class="pill">' + AGRO.crops.length + " crop guides</span>" +
+        '<span class="pill">' + plural(AGRO.pests.length, "reference entry", "reference entries") + "</span>" +
+        '<span class="pill">' + plural(AGRO.pests.filter((p) => p.kind === "disorder").length, "abiotic disorder", "abiotic disorders") + "</span>" +
+        '<span class="pill">' + plural(AGRO.crops.length, "crop guide", "crop guides") + "</span>" +
         '<span class="pill">IRAC · FRAC · HRAC rotation</span>' +
         '<span class="pill">Offline</span>' +
       "</div>" +
@@ -593,7 +597,7 @@
         (top.length ? top.map((r) => resultRow(r)).join("") :
           '<div class="empty">' +
             "<h3>No entry matches those symptoms</h3>" +
-            '<p class="small">' + esc(cropName(d.crop)) + " has " + cropEntryCount + " entries in this library, but none of them lists " +
+            '<p class="small">' + esc(cropName(d.crop)) + " has " + plural(cropEntryCount, "entry", "entries") + " in this library, but none of them lists " +
               esc(chosen.slice(0, 4).join("; ")) + (chosen.length > 4 ? " and the other symptoms you selected" : "") + ". " +
               "That means the combination is not recorded here — not that nothing causes it.</p>" +
             '<p class="small muted">Deselect the symptom you are least sure about, look at a different organ, or read the crop guide ' +
@@ -828,7 +832,7 @@
 
     const entriesCard = '<div class="card pad-lg" style="margin-top:16px">' +
         '<div class="card-head"><h3>Reference entries for this crop</h3><span class="spacer"></span>' +
-          '<span class="tiny muted">' + cropEntries.length + " profiles · tap to open</span></div>" +
+          '<span class="tiny muted">' + plural(cropEntries.length, "profile", "profiles") + " · tap to open</span></div>" +
         (cropEntries.length
           ? '<div class="lib-grid">' + cropEntries.map(libCard).join("") + "</div>"
           : '<p class="small muted">No reference entries are recorded on this crop yet.</p>') +
@@ -847,7 +851,7 @@
         '<div class="card">' +
           '<div class="card-head"><h3>Linked tools</h3></div>' +
           '<div class="stack" style="gap:8px">' +
-            '<a class="btn btn-sm" href="#/library/' + cropId + '/all">' + icon("book") + "All reference entries (" + fieldCount + ")</a>" +
+            '<a class="btn btn-sm" href="#/library/' + cropId + '/all">' + icon("book") + "All " + plural(fieldCount, "reference entry", "reference entries") + "</a>" +
             (disorderCount ? '<a class="btn btn-sm" href="#/library/' + cropId + '/disorder">' + icon("leaf") + "Disorders for this crop (" + disorderCount + ")</a>" : "") +
             '<a class="btn btn-sm" href="#/ipm/' + cropId + '">' + icon("ipm") + "IPM programme</a>" +
             '<a class="btn btn-sm" href="#/diagnose">' + icon("diag") + "Diagnose a problem</a>" +
@@ -1483,7 +1487,7 @@
     const chart = lineChart(g.cum, g.days);
     const total = Math.round(g.total);
     return '<div class="grid g3" style="margin-bottom:14px">' +
-        stat("Accumulated GDD", total, g.days + " days · base " + g.base + " °C") +
+        stat("Accumulated GDD", total, plural(g.days, "day", "days") + " · base " + g.base + " °C") +
         stat("Daily mean", (total / Math.max(1, g.days)).toFixed(1), "heat units per day") +
         stat("Peak day", g.peak.toFixed(1), "highest single-day accumulation") +
       "</div>" +
@@ -2021,7 +2025,7 @@
     if (!rows.length) { toast("No valid lines. Use: date, tmin, tmax"); return; }
     state.gdd = { base: base, raw: raw, rows: rows, cum: rows.map((r) => r.cum), days: rows.length, total: cum, peak: peak };
     render();
-    toast(rows.length + " days accumulated.");
+    toast(plural(rows.length, "day accumulated.", "days accumulated."));
   }
 
   function loadGddSample() {

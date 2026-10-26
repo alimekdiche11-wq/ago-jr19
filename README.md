@@ -18,6 +18,10 @@ The crop-rotation planner, whose transition checks are derived from the library 
 
 ![Crop rotation planner](docs/rotation.png)
 
+The mode-of-action rotation tracker, with each label entering by its IRAC / FRAC / HRAC group and its selection-pressure rating:
+
+![Resistance rotation](docs/resistance.png)
+
 A hosted copy is also published via GitHub Pages: **https://alimekdiche11-wq.github.io/ago-jr19/** (same static files, no server or build step).
 
 When served over HTTP(S) it can be installed as a standalone web app from the browser (it ships a `manifest.webmanifest` with 192 px, 512 px and adaptive-safe-zone icons, plus an apple-touch icon for iOS), and a service worker (`sw.js`) caches the app shell so the hosted copy keeps working with no network after the first visit. From a local file it simply opens as an ordinary offline page. The page also carries a 1200×630 preview card, so a link pasted into a chat or a social feed shows the project rather than a bare URL.
