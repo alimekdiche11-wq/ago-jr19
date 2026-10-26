@@ -110,6 +110,33 @@
     catch (e) { toast("Local storage unavailable — entries kept for this session only."); }
   }
 
+  /* ---------------- theme ---------------- */
+
+  const LS_THEME = "agroscope.theme";
+
+  function currentTheme() {
+    return document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
+  }
+
+  function syncThemeButton() {
+    const dark = currentTheme() === "dark";
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute("content", dark ? "#0f1512" : "#1f6f4a");
+    const b = document.querySelector('[data-action="theme"]');
+    if (!b) return;
+    const label = dark ? "Switch to light theme" : "Switch to dark theme";
+    b.setAttribute("aria-label", label);
+    b.setAttribute("title", label);
+    b.setAttribute("aria-pressed", dark ? "true" : "false");
+  }
+
+  function setTheme(mode) {
+    if (mode === "dark") document.documentElement.setAttribute("data-theme", "dark");
+    else document.documentElement.removeAttribute("data-theme");
+    try { localStorage.setItem(LS_THEME, mode); } catch (e) {}
+    syncThemeButton();
+  }
+
   let toastTimer = null;
   function toast(msg) {
     const t = $("#toast");
@@ -569,7 +596,7 @@
       "What to avoid before or after this crop, computed from botanical family and shared pest and disease associations.</p>";
 
     if (sameFamily.length) {
-      html += '<div class="small strong" style="margin:0 0 6px;color:#8a5a12">Same family — do not follow ' +
+      html += '<div class="small strong" style="margin:0 0 6px;color:var(--warn-700)">Same family — do not follow ' +
         esc(crop.name) + " back-to-back</div>" +
         '<div class="row-tight" style="flex-wrap:wrap;gap:6px;margin-bottom:12px">' +
         sameFamily.map((c) => '<a class="pill" href="#/crops/' + c.id + '" style="text-decoration:none">' + esc(c.name) + "</a>").join("") +
@@ -1504,6 +1531,7 @@
     if (action === "close-modal") { closeModal(); return; }
     if (action === "print") { window.print(); return; }
     if (action === "help") { openModal(shortcutsModal()); return; }
+    if (action === "theme") { setTheme(currentTheme() === "dark" ? "light" : "dark"); return; }
 
     /* diagnosis */
     if (action === "diag-crop") { state.diag.crop = id; state.diag.step = 1; render(); return; }
@@ -1816,12 +1844,13 @@
   /* ---------------- boot ---------------- */
 
   $("#dataStamp").textContent = "rev " + AGRO.meta.revision;
+  syncThemeButton();
 
   /* Offline use of the hosted copy: cache the app shell so it keeps working
      without a network. No-op from a file:// URL, where a worker cannot run. */
   if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) {
     window.addEventListener("load", function () {
-      navigator.serviceWorker.register("sw.js").catch(function () {
+      navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).catch(function () {
         /* best-effort: the app already works offline from a local file */
       });
     });

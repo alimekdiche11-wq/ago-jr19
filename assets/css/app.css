@@ -17,6 +17,7 @@
   --red-100:   #fee2e2;
   --blue-700:  #1d4ed8;
   --blue-100:  #dbeafe;
+  --warn-700:  #8a5a12;
 
   --ink-900: #14181a;
   --ink-700: #35403c;
@@ -144,11 +145,14 @@ input, select, textarea { font: inherit; color: inherit; }
   border-bottom: 1px solid var(--line);
 }
 .icon-btn {
-  display: none; width: 34px; height: 34px; border-radius: 9px;
+  display: grid; width: 34px; height: 34px; border-radius: 9px;
   border: 1px solid var(--line); background: var(--card);
   place-items: center; cursor: pointer;
+  transition: background .13s, border-color .13s;
 }
 .icon-btn svg { width: 18px; height: 18px; }
+.icon-btn:hover { background: #fafbf9; border-color: #d3dad3; }
+.menu-btn { display: none; }
 .search-wrap { position: relative; flex: 1 1 380px; max-width: 520px; }
 .search-ico {
   position: absolute; left: 11px; top: 50%; transform: translateY(-50%);
@@ -650,6 +654,8 @@ hr.sep { border: 0; border-top: 1px solid var(--line); margin: 20px 0; }
   .modal-card { max-height: 100vh; border-radius: 0; padding: 24px 18px; }
   .search-wrap { flex: 1 1 auto; }
   .topbar-right .pill { display: none; }
+  .topbar .btn-primary .btn-label { display: none; }
+  .topbar .btn-primary { padding: 8px 10px; }
   h1 { font-size: 25px; }
   .result { grid-template-columns: 4px 1fr; }
   .result .res-score { display: none; }
@@ -665,4 +671,120 @@ hr.sep { border: 0; border-top: 1px solid var(--line); margin: 20px 0; }
   .modal { position: static; padding: 0; display: block; }
   .modal-card { position: static; max-height: none; box-shadow: none; border-radius: 0; padding: 0; width: 100%; }
   body { background: #fff; }
+}
+
+/* ============================================================
+   Dark theme — additive override of the light design system.
+   Applied by html[data-theme="dark"], toggled from the top bar
+   and remembered in localStorage ("agroscope.theme"). Wrapped in
+   @media screen so printed output stays light.
+   ============================================================ */
+
+@media screen {
+  html[data-theme="dark"] {
+    color-scheme: dark;
+
+    --green-900: #0a1d14;
+    --green-800: #d9ecdf;
+    --green-700: #2f9e6b;
+    --green-600: #3bb87d;
+    --green-500: #46c489;
+    --green-100: #16301f;
+    --green-50:  #14231a;
+
+    --amber-600: #e0a24a;
+    --amber-100: #33260f;
+    --red-700:   #e57373;
+    --red-100:   #3a1c1c;
+    --blue-700:  #8ab0f7;
+    --blue-100:  #1b2740;
+    --warn-700:  #e0a24a;
+
+    --ink-900: #e9f0eb;
+    --ink-700: #c3d1c8;
+    --ink-500: #9aab9f;
+    --ink-400: #7f9186;
+    --line:    #2c3730;
+    --line-2:  #232d27;
+    --paper:   #0f1512;
+    --card:    #17201a;
+
+    --shadow-sm: 0 1px 2px rgba(0,0,0,.4);
+    --shadow:    0 2px 10px rgba(0,0,0,.45), 0 1px 2px rgba(0,0,0,.4);
+    --shadow-lg: 0 24px 60px -20px rgba(0,0,0,.7);
+  }
+
+  html[data-theme="dark"] ::selection { background: #2f5e46; color: #eafff3; }
+
+  /* top bar uses a hard-coded light blur */
+  html[data-theme="dark"] .topbar { background: rgba(15,21,18,.86); }
+
+  /* accents that are dark text on light in the light theme */
+  html[data-theme="dark"] a { color: #6fd39b; text-decoration-color: rgba(111,211,155,.35); }
+  html[data-theme="dark"] .linklike { color: #6fd39b; }
+  html[data-theme="dark"] .stat .v { color: #8fe0b3; }
+  html[data-theme="dark"] .result .res-score .n { color: #8fe0b3; }
+
+  /* buttons */
+  html[data-theme="dark"] .btn:hover { background: #1e2a23; border-color: #38443c; }
+  html[data-theme="dark"] .btn-ghost:hover { background: #1e2a23; color: var(--ink-900); }
+  html[data-theme="dark"] .btn-danger { color: #ef8f8f; border-color: #4a2626; background: #1b1514; }
+  html[data-theme="dark"] .btn-danger:hover { background: #2a1717; }
+  html[data-theme="dark"] .icon-btn:hover { background: #1e2a23; border-color: #38443c; }
+
+  /* pills */
+  html[data-theme="dark"] .pill { background: #1e2a23; color: var(--ink-700); }
+  html[data-theme="dark"] .pill-dark { background: #2b3a31; color: #eaf5ee; }
+  html[data-theme="dark"] .pill-green { color: #7fe0ab; }
+  html[data-theme="dark"] .pill-amber { color: #f0c07a; }
+  html[data-theme="dark"] .pill-red   { color: #f0a0a0; }
+  html[data-theme="dark"] .pill-blue  { color: #a7c2fb; }
+
+  /* severity meters and switches */
+  html[data-theme="dark"] .sev i { background: #303b34; }
+  html[data-theme="dark"] .switch input { background: #38443c; }
+  html[data-theme="dark"] .switch input::after { background: #e9f0eb; }
+
+  /* segmented control, empty states, step numbers */
+  html[data-theme="dark"] .seg { background: #1e2a23; }
+  html[data-theme="dark"] .empty { border-color: #33413a; background: #131b16; }
+  html[data-theme="dark"] .step .num { background: #26332b; }
+  html[data-theme="dark"] .key-opt { background: #141d18; }
+  html[data-theme="dark"] .crop-tile:hover,
+  html[data-theme="dark"] .lib-card:hover,
+  html[data-theme="dark"] .result:hover { border-color: #3a5a48; }
+
+  /* tables */
+  html[data-theme="dark"] thead th { background: #131b16; }
+  html[data-theme="dark"] tbody tr:hover { background: #141d18; }
+  html[data-theme="dark"] .moa-code { background: #1e2a23; }
+  html[data-theme="dark"] .kbd { background: #141d18; }
+
+  /* modal + callouts */
+  html[data-theme="dark"] .modal-x:hover { background: #1e2a23; }
+  html[data-theme="dark"] .modal-backdrop { background: rgba(0,0,0,.6); }
+  html[data-theme="dark"] .callout { background: #2a2011; color: #f0d9a8; }
+  html[data-theme="dark"] .callout.red { background: #2a1717; color: #f2baba; }
+  html[data-theme="dark"] .callout.green { background: #14231a; color: #a7e3bf; }
+
+  /* timeline chips */
+  html[data-theme="dark"] .timeline::before { background: linear-gradient(180deg, #2e4438, #232d27); }
+  html[data-theme="dark"] .tag-monitor { background: #1e2a23; color: var(--ink-500); }
+  html[data-theme="dark"] .tag-prevent { background: #17233f; color: #9db8f5; }
+  html[data-theme="dark"] .tag-cult    { background: #2c2011; color: #e0a24a; }
+  html[data-theme="dark"] .tag-mech    { background: #241f36; color: #b9a6f0; }
+  html[data-theme="dark"] .tag-bio     { background: #16301f; color: #7fe0ab; }
+
+  /* rotation planner */
+  html[data-theme="dark"] .transition { background: #141d18; }
+  html[data-theme="dark"] .chart .grid-line { stroke: #26332b; }
+
+  /* toasts and the skip link sit on --ink-900, which is now light */
+  html[data-theme="dark"] .toast { background: #23302a; color: #eef5f0; }
+  html[data-theme="dark"] .skip-link { background: #23302a; }
+
+  /* theme toggle button */
+  .theme-btn .ico-sun { display: none; }
+  html[data-theme="dark"] .theme-btn .ico-sun { display: block; }
+  html[data-theme="dark"] .theme-btn .ico-moon { display: none; }
 }
