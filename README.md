@@ -168,6 +168,7 @@ Checklist for a new entry:
 - Keyboard focus is drawn with a consistent two-pixel ring on links, buttons and the focusable cards and result rows; the ring adapts to both themes.
 - In the diagnosis and identification-key wizards, focus moves to the new step heading after each answer, so keyboard and screen-reader users never lose their place when the view is rebuilt.
 - `prefers-reduced-motion: reduce` is honoured: transitions and animations are effectively disabled for readers who ask the system for less motion.
+- The layout holds from **320 px** upwards: the scouting shortcut collapses to an icon and the library filter wraps onto a second row rather than scrolling sideways. No route scrolls horizontally at 320, 360, 414 or 768 px.
 
 ---
 
