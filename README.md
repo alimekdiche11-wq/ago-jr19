@@ -28,7 +28,7 @@ When served over HTTP(S) it can be installed as a standalone web app from the br
 
 | Module | Purpose |
 |---|---|
-| **Diagnose a problem** | Structured path: crop → organ → symptoms → field pattern → ranked differential diagnosis with an explicit confidence statement and a confirmation protocol. Abiotic, nutritional and physiological disorders are ranked alongside pests and pathogens. Any completed assessment can be copied as a **shareable link** that reopens exactly that set of answers. |
+| **Diagnose a problem** | Structured path: crop → organ → symptoms → field pattern → ranked differential diagnosis with an explicit confidence statement and a confirmation protocol. Abiotic, nutritional and physiological disorders are ranked alongside pests and pathogens. An interrupted assessment resumes on the same device; any completed one can be copied as a **shareable link** that reopens exactly that set of answers, exported as **CSV**, or printed with its inputs attached. |
 | **Identification key** | Dichotomous key to the arthropod orders and families of agricultural importance, including common larval forms, with diagnostic characters and the limits of each determination. |
 | **Crop agronomy** | Per-crop guide: climate, soil, variety and cultivar choice, planting window and density, irrigation, nutrition, harvest, storage, rotation and key risks — followed by that crop's reference entries. The agronomic context that has to be right before a crop problem can even be interpreted. Each guide also shows a **rotation fit** panel computed from the library: which other crops share the botanical family, and which share the most pest and disease associations. |
 | **Pest & disease library** | 73 entries: biology, damage, favourable conditions, monitoring, action thresholds, status in Algeria, IPM measures, chemistry by IRAC/FRAC group, resistance notes and lookalike species. Includes 13 abiotic, nutritional and physiological disorders. |
@@ -173,7 +173,7 @@ Checklist for a new entry:
 
 ## Known limits
 
-- **Storage is per browser and per device.** The scouting log and the planned crop sequence are not synchronised. Export the CSV (or a full JSON backup from the scouting log) before clearing browser data.
+- **Storage is per browser and per device.** The scouting log, the planned crop sequence and the current diagnosis assessment are kept in `localStorage` on that device only and are not synchronised. An interrupted assessment resumes where it was left, and **Restart** clears it. Export the CSV (or a full JSON backup from the scouting log) before clearing browser data.
 - **No image recognition.** The app is deliberately not a photo classifier; it structures the evidence a photograph must provide.
 - **Thresholds are indicative.** Values are drawn from common extension practice and must be calibrated to local cultivar, market and climate.
 - **Degree days use a simple average.** Non-linear models and upper thresholds are more accurate in extreme heat.

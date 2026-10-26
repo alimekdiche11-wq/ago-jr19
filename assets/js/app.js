@@ -74,6 +74,38 @@
 
   const LS_SCOUT = "agroscope.scout.v1";
   const LS_SEQ = "agroscope.sequence.v1";
+  const LS_DIAG = "agroscope.diagnosis.v1";
+
+  function freshDiag() {
+    return { step: 0, crop: null, organ: null, symptoms: [], pattern: null, allSyms: false };
+  }
+
+  /* The assessment is the one piece of work that cannot be recreated after an
+     accidental reload: a field observation takes time to enter. It is kept
+     locally and handed back on return. Only ids that still exist in the
+     dataset survive, so an old saved answer cannot point at a removed entry. */
+  function loadDiag() {
+    try {
+      const v = JSON.parse(localStorage.getItem(LS_DIAG));
+      if (!v || !AGRO.crops.some((c) => c.id === v.crop)) return null;
+      const organ = AGRO.organs.some((o) => o.id === v.organ) ? v.organ : null;
+      const symptoms = Array.isArray(v.symptoms)
+        ? v.symptoms.filter((id) => AGRO.symptoms.some((s) => s.id === id)) : [];
+      const pattern = AGRO.patterns.some((p) => p.id === v.pattern) ? v.pattern : null;
+      let step = Math.min(Math.max(Number(v.step) || 1, 1), 4);
+      if (!organ) step = Math.min(step, 1);
+      else if (!symptoms.length) step = Math.min(step, 2);
+      return { step: step, crop: v.crop, organ: organ, symptoms: symptoms,
+        pattern: pattern, allSyms: !!v.allSyms };
+    } catch (e) { return null; }
+  }
+
+  function saveDiag() {
+    try {
+      if (state.diag.step === 0) localStorage.removeItem(LS_DIAG);
+      else localStorage.setItem(LS_DIAG, JSON.stringify(state.diag));
+    } catch (e) { /* private mode: the session simply does not resume */ }
+  }
 
   function loadScout() {
     try { return JSON.parse(localStorage.getItem(LS_SCOUT)) || []; }
@@ -90,7 +122,7 @@
   const state = {
     route: "dashboard",
     param: null,
-    diag: { step: 0, crop: null, organ: null, symptoms: [], pattern: null, allSyms: false },
+    diag: freshDiag(),
     lib: { kind: "all", crop: "all", q: "" },
     keyTrail: [],
     keyPath: [AGRO.keyStart],
@@ -110,6 +142,13 @@
     try { localStorage.setItem(LS_SCOUT, JSON.stringify(state.scout)); }
     catch (e) { toast("Local storage unavailable — entries kept for this session only."); }
   }
+
+  /* Restore the last assessment before the first render, so returning to the
+     page resumes instead of starting over. A share link still overrides it. */
+  (function () {
+    const saved = loadDiag();
+    if (saved) { state.diag = saved; state._diagResumed = true; }
+  })();
 
   /* ---------------- theme ---------------- */
 
@@ -266,7 +305,14 @@
        and undo what the user just changed. */
     if (r.route === "diagnose") {
       const shareKey = "diagnose?" + r.params.toString();
-      if (r.params.has("crop") && state._diagShareKey !== shareKey) hydrateDiag(r.params);
+      if (r.params.has("crop") && state._diagShareKey !== shareKey) {
+        /* The link is authoritative: apply it if it is valid, and start from
+           scratch if it names a crop this build does not know, so a stale
+           link never lands the reader in an unrelated saved assessment. */
+        if (AGRO.crops.some((c) => c.id === r.params.get("crop"))) hydrateDiag(r.params);
+        else state.diag = freshDiag();
+        state._diagResumed = false;
+      }
       state._diagShareKey = shareKey;
     } else {
       state._diagShareKey = null;
@@ -318,6 +364,8 @@
       if (pest) openModal(pestDetail(pest));
       else if (crop) { state.lib.crop = crop.id; $("#view").innerHTML = viewLibrary(); }
     }
+
+    if (state.route === "diagnose") saveDiag();
   }
 
   /* ============================================================
@@ -430,9 +478,11 @@
         "<h1>What is wrong with the crop?</h1>" +
         '<p class="lede">A structured path from crop and organ to a ranked list of candidates. ' +
         "This is a hypothesis generator, not a confirmation — the final step tells you what evidence would settle it.</p>" +
+        (state._diagResumed ? '<p class="small muted" style="margin-top:8px">Resumed where you left off on this device. "Restart" clears it.</p>' : "") +
       "</div>" +
       '<div class="page-actions"><button class="btn btn-ghost" data-action="diag-reset">' + icon("rotate") + "Restart</button></div>" +
       "</div>";
+    state._diagResumed = false;
 
     const stepper = '<div class="steps">' + steps.map((s, i) =>
       '<div class="step ' + (i === d.step ? "on" : i < d.step ? "done" : "") + '">' +
@@ -502,6 +552,9 @@
       const results = diagnose();
       const pattern = AGRO.patterns.find((p) => p.id === d.pattern);
       const top = results.slice(0, 6);
+      const cropEntryCount = AGRO.pests.filter((p) =>
+        p.kind !== "beneficial" && (p.crops || []).includes(d.crop)).length;
+      const chosen = d.symptoms.map(symLabel);
 
       body = '<div class="row" style="margin-bottom:14px">' +
         '<div><div class="eyebrow" style="margin:0">Assessment</div>' +
@@ -521,12 +574,21 @@
         "</div>" +
 
         '<p class="small muted" role="status" style="margin:0 0 10px">' +
-          results.length + " candidate" + (results.length === 1 ? "" : "s") +
-          (results.length > top.length ? " matched; the " + top.length + " closest are shown below." : " matched, closest fit first.") +
+          (results.length === 0 ? "No candidate matched these symptoms." :
+            results.length + " candidate" + (results.length === 1 ? "" : "s") +
+            (results.length > top.length ? " matched; the " + top.length + " closest are shown below." : " matched, closest fit first.")) +
         "</p>" +
 
         (top.length ? top.map((r) => resultRow(r)).join("") :
-          '<div class="empty"><h3>No candidate matched</h3><p class="small">Try a different organ or fewer symptoms. The library may still describe the organism.</p></div>') +
+          '<div class="empty">' +
+            "<h3>No entry matches those symptoms</h3>" +
+            '<p class="small">' + esc(cropName(d.crop)) + " has " + cropEntryCount + " entries in this library, but none of them lists " +
+              esc(chosen.slice(0, 4).join("; ")) + (chosen.length > 4 ? " and the other symptoms you selected" : "") + ". " +
+              "That means the combination is not recorded here — not that nothing causes it.</p>" +
+            '<p class="small muted">Deselect the symptom you are least sure about, look at a different organ, or read the crop guide ' +
+              "first: a symptom described one way in the field can be recorded under another description in the library.</p>" +
+            '<div class="row" style="margin-top:12px"><button class="btn" data-action="diag-back">' + icon("back") + "Back to symptoms</button></div>" +
+          "</div>") +
 
         '<div class="card" style="margin-top:18px">' +
           '<div class="card-head"><h3>How to confirm</h3></div>' +
@@ -1612,7 +1674,7 @@
     if (action === "diag-next") { state.diag.step = 3; render(); return; }
     if (action === "diag-back") { state.diag.step = Math.max(0, state.diag.step - 1); render(); return; }
     if (action === "diag-run") { state.diag.step = 4; render(); return; }
-    if (action === "diag-reset") { state.diag = { step: 0, crop: null, organ: null, symptoms: [], pattern: null, allSyms: false }; render(); return; }
+    if (action === "diag-reset") { state.diag = freshDiag(); state._diagResumed = false; render(); return; }
 
     /* crop rotation planner */
     if (action === "seq-add") {
