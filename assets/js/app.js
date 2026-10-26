@@ -204,6 +204,17 @@
     $("#modal").hidden = true;
     $("#modalBody").innerHTML = "";
     document.body.style.overflow = "";
+
+    /* A profile opened from a deep link (#/library/<id>) would be opened again
+       by the next render for as long as that id stays in the address. Closing
+       therefore returns the address to the plain library, replacing the history
+       entry so that Back does not reopen what was just dismissed. */
+    const r = parseHash();
+    if (r.route === "library" && r.param && pestById(r.param)) {
+      try { history.replaceState(null, "", "#/library"); }
+      catch (e) { location.hash = "#/library"; }
+    }
+
     if (lastFocused && typeof lastFocused.focus === "function") lastFocused.focus();
     lastFocused = null;
   }
