@@ -195,7 +195,10 @@
 
   let lastFocused = null;
   function openModal(html, pest) {
-    lastFocused = document.activeElement;
+    /* A second profile opened from inside the first (the dialog stays open)
+       must not adopt an element from the HTML that is about to be replaced:
+       closing would then try to restore focus into a detached node. */
+    if ($("#modal").hidden) lastFocused = document.activeElement;
     $("#modalBody").innerHTML = html;
     $("#modal").hidden = false;
     document.body.style.overflow = "hidden";
@@ -210,6 +213,7 @@
     }
   }
   function closeModal() {
+    const pestId = state.modalPest;
     $("#modal").hidden = true;
     $("#modalBody").innerHTML = "";
     document.body.style.overflow = "";
@@ -229,7 +233,17 @@
     }
     document.title = routeTitle();
 
-    if (lastFocused && typeof lastFocused.focus === "function") lastFocused.focus();
+    /* Focus goes back where it came from. A profile reached by clicking a card
+       puts its id in the address first, so the list is rebuilt and the original
+       card is detached: fall back to the card for the same profile, which is
+       the element the reader used. */
+    const opener = lastFocused && lastFocused !== document.body &&
+      document.contains(lastFocused) ? lastFocused : null;
+    if (opener) opener.focus();
+    else if (pestId) {
+      const card = $('#view [data-action="open-pest"][data-id="' + pestId + '"]');
+      if (card) card.focus();
+    }
     lastFocused = null;
   }
 
@@ -389,6 +403,13 @@
     document.title = routeTitle();
     renderNav();
     $("#view").innerHTML = fn();
+
+    /* Address and screen must agree. Now that a clicked profile has its own
+       address, Back (or a nav link) can leave that address while the dialog is
+       still up; close it so the visible screen matches the URL. */
+    if (state.modalPest && !(state.route === "library" && state.param === state.modalPest)) {
+      closeModal();
+    }
 
     const active = $('.nav a[href="#/' + state.route + '"]');
     if (active) active.classList.add("active");
@@ -1743,7 +1764,12 @@
     if (action === "lib-kind") { state.lib.kind = id; render(); return; }
     if (action === "open-pest") {
       const p = pestById(id);
-      if (p) openModal(pestDetail(p), p);
+      if (!p) return;
+      /* Put the profile in the address, exactly as a received link carries it,
+         so any opened profile can be bookmarked, reloaded or sent on. */
+      const target = "#/library/" + encodeURIComponent(p.id);
+      if (location.hash === target) openModal(pestDetail(p), p);
+      else location.hash = target;
       return;
     }
     if (action === "open-crop") { closeModal(); location.hash = "#/crops/" + id; return; }
