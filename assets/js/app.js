@@ -135,7 +135,8 @@
     scout: loadScout(),
     seq: loadSeq(),
     gdd: null,
-    cropGuide: null
+    cropGuide: null,
+    modalPest: null
   };
 
   function saveSeq() {
@@ -193,11 +194,15 @@
   /* ---------------- modal ---------------- */
 
   let lastFocused = null;
-  function openModal(html) {
+  function openModal(html, pest) {
     lastFocused = document.activeElement;
     $("#modalBody").innerHTML = html;
     $("#modal").hidden = false;
     document.body.style.overflow = "hidden";
+    /* A pest profile is what the reader is looking at, whatever route opened
+       it, so it names the tab while the dialog stays open. */
+    state.modalPest = pest ? pest.id : null;
+    document.title = routeTitle();
     const card = $("#modal").querySelector(".modal-card");
     if (card) {
       const target = card.querySelector(".modal-x") || card;
@@ -208,6 +213,7 @@
     $("#modal").hidden = true;
     $("#modalBody").innerHTML = "";
     document.body.style.overflow = "";
+    state.modalPest = null;
 
     /* A profile opened from a deep link (#/library/<id>) would be opened again
        by the next render for as long as that id stays in the address. Closing
@@ -217,7 +223,11 @@
     if (r.route === "library" && r.param && pestById(r.param)) {
       try { history.replaceState(null, "", "#/library"); }
       catch (e) { location.hash = "#/library"; }
+      const after = parseHash();
+      state.param = after.param;
+      state.sub = after.sub;
     }
+    document.title = routeTitle();
 
     if (lastFocused && typeof lastFocused.focus === "function") lastFocused.focus();
     lastFocused = null;
@@ -262,6 +272,31 @@
     { section: "About" },
     { route: "about",     label: "Scope & sources", icon: "info" }
   ];
+
+  /* SPA route names are invisible to the browser: the tab, history and
+     bookmarks keep the document title from index.html. Give every route a
+     title of its own, and name the record when a detail view is open, so a
+     reader can tell two tabs apart and WCAG 2.4.2 holds. */
+  const SITE_TITLE = "AgroScope — Agronomy, Entomology & Plant Protection Workbench";
+
+  function routeTitle() {
+    const modalPest = state.modalPest && pestById(state.modalPest);
+    if (modalPest) return modalPest.name + " · AgroScope";
+    if (!state.route || state.route === "dashboard") return SITE_TITLE;
+    const nav = NAV.find((n) => n.route === state.route);
+    if (!nav) return SITE_TITLE;
+    let detail = "";
+    if (state.param && state.route === "library") {
+      const pest = pestById(state.param);
+      const crop = pest ? null : cropOf(state.param);
+      if (pest) detail = pest.name;
+      else if (crop) detail = crop.name + " guide";
+    } else if (state.param && state.route === "crops") {
+      const crop = cropOf(state.param);
+      if (crop) detail = crop.name;
+    }
+    return (detail ? detail + " · " + nav.label : nav.label) + " · AgroScope";
+  }
 
   function renderNav() {
     $("#nav").innerHTML = NAV.map((n) => {
@@ -351,6 +386,7 @@
     const fn = views[state.route] || viewDashboard;
     const routeChanged = state._rendered !== state.route;
     const focusInView = $("#view").contains(document.activeElement);
+    document.title = routeTitle();
     renderNav();
     $("#view").innerHTML = fn();
 
@@ -376,7 +412,7 @@
       const KIND_SET = ["insect", "mite", "disease", "weed", "disorder", "beneficial"];
       if (state.sub === "all") state.lib.kind = "all";
       else if (KIND_SET.indexOf(state.sub) !== -1) state.lib.kind = state.sub;
-      if (pest) openModal(pestDetail(pest));
+      if (pest) openModal(pestDetail(pest), pest);
       else if (crop) { state.lib.crop = crop.id; $("#view").innerHTML = viewLibrary(); }
     }
 
@@ -1707,7 +1743,7 @@
     if (action === "lib-kind") { state.lib.kind = id; render(); return; }
     if (action === "open-pest") {
       const p = pestById(id);
-      if (p) openModal(pestDetail(p));
+      if (p) openModal(pestDetail(p), p);
       return;
     }
     if (action === "open-crop") { closeModal(); location.hash = "#/crops/" + id; return; }
