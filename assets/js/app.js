@@ -496,14 +496,14 @@
 
     '<div class="grid g3" style="align-items:start">' +
       '<div class="card pad-lg" style="grid-column:span 2">' +
-        '<div class="card-head"><h3>Start from the crop</h3><span class="spacer"></span>' +
+        '<div class="card-head"><h2>Start from the crop</h2><span class="spacer"></span>' +
           '<span class="tiny muted">Agronomy guide, reference list and programme</span></div>' +
         '<div class="grid g3">' + cropTiles + "</div>" +
       "</div>" +
 
       '<div class="stack">' +
         '<div class="card">' +
-          '<div class="card-head"><h3>Method</h3></div>' +
+          '<div class="card-head"><h2>Method</h2></div>' +
           '<ol class="small" style="margin:0;padding-left:18px;color:var(--ink-700);line-height:1.75">' +
             "<li>Identify the organism, not the symptom.</li>" +
             "<li>Match the life stage to the susceptible window.</li>" +
@@ -513,7 +513,7 @@
           "</ol>" +
         "</div>" +
         '<div class="card">' +
-          '<div class="card-head"><h3>Recent scouting</h3><span class="spacer"></span><a class="small" href="#/scout">All</a></div>' +
+          '<div class="card-head"><h2>Recent scouting</h2><span class="spacer"></span><a class="small" href="#/scout">All</a></div>' +
           (recent.length
             ? recent.map((s) =>
                 '<div style="display:flex;gap:8px;padding:7px 0;border-bottom:1px solid var(--line-2)">' +
@@ -653,7 +653,7 @@
 
         (top.length ? top.map((r) => resultRow(r)).join("") :
           '<div class="empty">' +
-            "<h3>No entry matches those symptoms</h3>" +
+            "<h2>No entry matches those symptoms</h2>" +
             '<p class="small">' + esc(cropName(d.crop)) + " has " + plural(cropEntryCount, "entry", "entries") + " in this library, but none of them lists " +
               esc(chosen.slice(0, 4).join("; ")) + (chosen.length > 4 ? " and the other symptoms you selected" : "") + ". " +
               "That means the combination is not recorded here — not that nothing causes it.</p>" +
@@ -663,7 +663,7 @@
           "</div>") +
 
         '<div class="card" style="margin-top:18px">' +
-          '<div class="card-head"><h3>How to confirm</h3></div>' +
+          '<div class="card-head"><h2>How to confirm</h2></div>' +
           '<ul class="small" style="margin:0;padding-left:18px;color:var(--ink-700);line-height:1.8">' +
             "<li><strong>Insects and mites:</strong> rear larvae to adults, photograph wing venation and antennae, or use DNA barcoding (COI) when morphology is ambiguous.</li>" +
             "<li><strong>Diseases:</strong> laboratory isolation, ELISA or PCR. Foliar symptoms alone rarely justify a species-level diagnosis.</li>" +
@@ -695,7 +695,7 @@
     const cover = r.selN ? " · " + r.hits + "/" + r.selN + " symptoms" : "";
     return '<div class="result lvl-' + lvl + '" role="button" tabindex="0" data-action="open-pest" data-id="' + p.id + '">' +
       '<div class="bar"></div>' +
-      "<div><h4>" + esc(p.name) + "</h4>" +
+      "<div><h3>" + esc(p.name) + "</h3>" +
       '<div class="res-sub"><span class="sci">' + esc(p.sci) + "</span> · " + esc(KIND_LABEL[p.kind] || p.kind) + esc(cover) + "</div>" +
       '<div class="res-why">' + why + "</div></div>" +
       '<div class="res-score"><div class="n">' + r.pct + '%</div><div class="l">' + conf + "</div></div>" +
@@ -759,7 +759,7 @@
     return "<ul>" + (arr || []).map((x) => "<li>" + esc(x) + "</li>").join("") + "</ul>";
   }
   function guideSec(title, bodyHtml) {
-    return '<div class="sec"><h4>' + title + "</h4>" + bodyHtml + "</div>";
+    return '<div class="sec"><h2>' + title + "</h2>" + bodyHtml + "</div>";
   }
   function guideRows(rows) {
     return '<div class="table-wrap"><table><tbody>' +
@@ -787,7 +787,7 @@
       .sort((a, b) => b.shared.length - a.shared.length || a.crop.name.localeCompare(b.crop.name));
 
     let html = '<div class="card">' +
-      '<div class="card-head"><h3>Rotation fit</h3><span class="spacer"></span>' +
+      '<div class="card-head"><h2>Rotation fit</h2><span class="spacer"></span>' +
         '<span class="tiny muted">from the library</span></div>';
 
     html += '<p class="small" style="color:var(--ink-700);margin:0 0 10px">' +
@@ -844,7 +844,7 @@
       return '<div class="page-head"><div class="grow">' +
           '<div class="eyebrow">Crop agronomy</div><h1>Agronomy guides</h1></div></div>' +
         selector +
-        '<div class="empty"><h3>No agronomy guide for this crop yet</h3>' +
+        '<div class="empty"><h2>No agronomy guide for this crop yet</h2>' +
         '<p class="small">Choose another crop from the selector.</p></div>';
     }
 
@@ -888,7 +888,7 @@
         (b.severity - a.severity) || a.name.localeCompare(b.name));
 
     const entriesCard = '<div class="card pad-lg" style="margin-top:16px">' +
-        '<div class="card-head"><h3>Reference entries for this crop</h3><span class="spacer"></span>' +
+        '<div class="card-head"><h2>Reference entries for this crop</h2><span class="spacer"></span>' +
           '<span class="tiny muted">' + plural(cropEntries.length, "profile", "profiles") + " · tap to open</span></div>" +
         (cropEntries.length
           ? '<div class="lib-grid">' + cropEntries.map(libCard).join("") + "</div>"
@@ -897,16 +897,16 @@
 
     const side = '<div class="stack">' +
         '<div class="card">' +
-          '<div class="card-head"><h3>Key risks</h3></div>' +
+          '<div class="card-head"><h2>Key risks</h2></div>' +
           guideList(g.keyRisks) +
         "</div>" +
         '<div class="card">' +
-          '<div class="card-head"><h3>Regional note</h3></div>' +
+          '<div class="card-head"><h2>Regional note</h2></div>' +
           '<p class="small" style="color:var(--ink-700)">' + esc(g.regionNote) + "</p>" +
         "</div>" +
         rotationFit(cropId) +
         '<div class="card">' +
-          '<div class="card-head"><h3>Linked tools</h3></div>' +
+          '<div class="card-head"><h2>Linked tools</h2></div>' +
           '<div class="stack" style="gap:8px">' +
             '<a class="btn btn-sm" href="#/library/' + cropId + '/all">' + icon("book") + "All " + plural(fieldCount, "reference entry", "reference entries") + "</a>" +
             (disorderCount ? '<a class="btn btn-sm" href="#/library/' + cropId + '/disorder">' + icon("leaf") + "Disorders for this crop (" + disorderCount + ")</a>" : "") +
@@ -970,7 +970,7 @@
 
     if (!seq.length) {
       return head + builder + disclaimer +
-        '<div class="empty"><h3>No sequence yet</h3>' +
+        '<div class="empty"><h2>No sequence yet</h2>' +
         '<p class="small">Add a first crop above. Three to five seasons is usually enough to expose the main conflicts.</p></div>';
     }
 
@@ -987,7 +987,7 @@
       "</div>").join("");
 
     const timeline = '<div class="card pad-lg">' +
-        '<div class="card-head"><h3>Sequence</h3><span class="spacer"></span>' +
+        '<div class="card-head"><h2>Sequence</h2><span class="spacer"></span>' +
           '<span class="tiny muted">' + seq.length + " season" + (seq.length === 1 ? "" : "s") + "</span></div>" +
         '<div class="seq-list">' + chips + "</div>" +
       "</div>";
@@ -1026,7 +1026,7 @@
     }).join("") : '<p class="small muted">Add at least two seasons to check the transitions.</p>';
 
     const checks = '<div class="card pad-lg" style="margin-top:16px">' +
-        '<div class="card-head"><h3>Transition checks</h3><span class="spacer"></span>' +
+        '<div class="card-head"><h2>Transition checks</h2><span class="spacer"></span>' +
           '<span class="pill ' + (redCount ? "pill-red" : amberCount ? "pill-amber" : "pill-green") + '">' +
           (redCount ? redCount + " same-family" : amberCount ? amberCount + " shared-load" : "all clear") + "</span></div>" +
         transHtml +
@@ -1037,7 +1037,7 @@
     const repeats = Object.keys(counts).filter((id) => counts[id] > 1);
 
     const other = '<div class="stack">' +
-        '<div class="card"><div class="card-head"><h3>Summary</h3></div>' +
+        '<div class="card"><div class="card-head"><h2>Summary</h2></div>' +
           '<ul class="small" style="margin:0;padding-left:18px;line-height:1.8;color:var(--ink-700)">' +
             "<li>" + seq.length + " season" + (seq.length === 1 ? "" : "s") + ", " +
               Object.keys(counts).length + " distinct crop" + (Object.keys(counts).length === 1 ? "" : "s") + ".</li>" +
@@ -1045,7 +1045,7 @@
             "<li>" + (repeats.length ? "Repeated crop: " + repeats.map((r) => esc(cropName(r))).join(", ") + "." : "No crop is repeated.") + "</li>" +
           "</ul>" +
         "</div>" +
-        '<div class="card"><div class="card-head"><h3>Read the guides</h3></div>' +
+        '<div class="card"><div class="card-head"><h2>Read the guides</h2></div>' +
           '<p class="small" style="color:var(--ink-700)">Each crop guide carries its own rotation note and rotation-fit panel.</p>' +
           '<div class="stack" style="gap:8px;margin-top:8px">' +
             seq.filter((id, i) => seq.indexOf(id) === i).map((id) =>
@@ -1127,7 +1127,7 @@
         '<div class="lib-grid">' + items.map(libCard).join("") + "</div>" :
         (guideHits.length
           ? '<p class="small muted">No pest, disease or weed entry matches this search — the crop guide above is the relevant result.</p>'
-          : '<div class="empty"><h3>Nothing matches these filters</h3><p class="small">Clear the crop filter or search a different term.</p></div>'));
+          : '<div class="empty"><h2>Nothing matches these filters</h2><p class="small">Clear the crop filter or search a different term.</p></div>'));
   }
 
   function libCard(p) {
@@ -1198,16 +1198,16 @@
         (p.role ? fact("Ecological role", p.role) : "") +
       "</div>" +
 
-      '<div class="sec"><h4>Summary</h4><p>' + esc(p.tagline) + "</p></div>" +
-      '<div class="sec"><h4>' + (isDisorder ? "Mechanism and appearance" : "Biology and cycle") + '</h4><p>' + esc(p.bio) + "</p></div>" +
-      '<div class="sec"><h4>' + (isDisorder ? "Yield and quality impact" : "Damage and economic importance") + '</h4><p>' + esc(p.damage) + "</p></div>" +
-      (p.favours ? '<div class="sec"><h4>' + (isDisorder ? "Conditions that cause it" : "Conditions that favour it") + '</h4><p>' + esc(p.favours) + "</p></div>" : "") +
-      '<div class="sec"><h4>' + (isDisorder ? "How to measure and confirm" : "Monitoring") + '</h4><p>' + esc(p.monitoring || "No specific protocol recorded.") + "</p></div>" +
+      '<div class="sec"><h2>Summary</h2><p>' + esc(p.tagline) + "</p></div>" +
+      '<div class="sec"><h2>' + (isDisorder ? "Mechanism and appearance" : "Biology and cycle") + '</h2><p>' + esc(p.bio) + "</p></div>" +
+      '<div class="sec"><h2>' + (isDisorder ? "Yield and quality impact" : "Damage and economic importance") + '</h2><p>' + esc(p.damage) + "</p></div>" +
+      (p.favours ? '<div class="sec"><h2>' + (isDisorder ? "Conditions that cause it" : "Conditions that favour it") + '</h2><p>' + esc(p.favours) + "</p></div>" : "") +
+      '<div class="sec"><h2>' + (isDisorder ? "How to measure and confirm" : "Monitoring") + '</h2><p>' + esc(p.monitoring || "No specific protocol recorded.") + "</p></div>" +
       (p.threshold ? '<div class="callout green"><strong>' + (isDisorder ? "Interpretation." : "Action threshold.") + "</strong> " + esc(p.threshold) + "</div>" : "") +
-      (p.dz ? '<div class="sec"><h4>Status in Algeria</h4><p>' + esc(p.dz) + "</p></div>" : "") +
+      (p.dz ? '<div class="sec"><h2>Status in Algeria</h2><p>' + esc(p.dz) + "</p></div>" : "") +
 
       '<hr class="sep">' +
-      '<div class="sec"><h4>' + (isDisorder ? "Corrective and preventive measures" : "Integrated management") + '</h4>' +
+      '<div class="sec"><h2>' + (isDisorder ? "Corrective and preventive measures" : "Integrated management") + '</h2>' +
         '<div class="grid g2" style="gap:16px">' +
           "<div><div class=\"tiny strong\" style=\"margin-bottom:4px\">" + quad.a + "</div>" + list(ipm.cultural) + "</div>" +
           "<div><div class=\"tiny strong\" style=\"margin-bottom:4px\">" + quad.b + "</div>" + list(ipm.biological) + "</div>" +
@@ -1216,10 +1216,10 @@
         "</div>" +
       "</div>" +
 
-      '<div class="sec"><h4>' + (isDisorder ? "Amendment and correction options" : "Chemical options by mode of action") + '</h4>' + chem + chemNote + "</div>" +
+      '<div class="sec"><h2>' + (isDisorder ? "Amendment and correction options" : "Chemical options by mode of action") + '</h2>' + chem + chemNote + "</div>" +
 
-      (p.resistance && !isDisorder ? '<div class="sec"><h4>Resistance management</h4><p>' + esc(p.resistance) + "</p></div>" : "") +
-      (look ? '<div class="sec"><h4>Differential diagnosis</h4>' + look + "</div>" : "") +
+      (p.resistance && !isDisorder ? '<div class="sec"><h2>Resistance management</h2><p>' + esc(p.resistance) + "</p></div>" : "") +
+      (look ? '<div class="sec"><h2>Differential diagnosis</h2>' + look + "</div>" : "") +
 
       '<hr class="sep">' +
       '<div class="row"><span class="tiny muted">Reference entry ' + esc(p.id) + " · dataset " + AGRO.meta.revision + "</span>" +
@@ -1283,11 +1283,11 @@
           '<span class="pill pill-green">' + esc(t.role) + "</span>" +
           '<span class="pill pill-ghost">' + t.diag.length + " diagnostic characters</span></div>" +
 
-        '<div class="sec"><h4>Diagnostic characters</h4><ul>' +
+        '<div class="sec"><h2>Diagnostic characters</h2><ul>' +
           t.diag.map((d) => "<li>" + esc(d) + "</li>").join("") + "</ul></div>" +
 
         (t.families && t.families.length ?
-          '<div class="sec"><h4>Families to consider</h4><div class="table-wrap"><table><thead><tr><th>Family</th><th>Field note</th></tr></thead><tbody>' +
+          '<div class="sec"><h2>Families to consider</h2><div class="table-wrap"><table><thead><tr><th>Family</th><th>Field note</th></tr></thead><tbody>' +
           t.families.map((f) => "<tr><td><strong>" + esc(f.n) + "</strong></td><td class=\"small\">" + esc(f.d) + "</td></tr>").join("") +
           "</tbody></table></div></div>" : "") +
 
@@ -1342,7 +1342,7 @@
       '<div class="callout green" style="margin-bottom:16px">' + esc(note) + "</div>" +
       '<div class="grid g3" style="align-items:start">' +
         '<div class="card pad-lg" style="grid-column:span 2">' + timeline + "</div>" +
-        '<div class="card"><div class="card-head"><h3>Principles applied</h3></div>' +
+        '<div class="card"><div class="card-head"><h2>Principles applied</h2></div>' +
           AGRO.ipmPrinciples.map((p) =>
             '<div style="display:flex;gap:9px;padding:8px 0;border-bottom:1px solid var(--line-2);align-items:flex-start">' +
               '<span class="moa-code" style="min-width:22px">' + p.n + "</span>" +
@@ -1370,16 +1370,17 @@
     const sections = schemes.map((s) => {
       const list = groups.filter((g) => g.scheme === s);
       return '<div class="card" style="margin-bottom:14px">' +
-        '<div class="card-head"><h3>' + s + " groups</h3><span class=\"spacer\"></span>" +
+        '<div class="card-head"><h2>' + s + " groups</h2><span class=\"spacer\"></span>" +
           '<span class="tiny muted">' + (s === "IRAC" ? "insecticides & acaricides" : s === "FRAC" ? "fungicides" : "herbicides") + "</span></div>" +
         list.map((g) => {
           const key = g.scheme + ":" + g.code;
+          const track = "Track " + g.scheme + " group " + g.code + ": " + g.name;
           return '<div class="moa-row">' +
             '<span class="moa-code">' + esc(g.code) + "</span>" +
             '<div style="flex:1;min-width:0"><div class="small strong">' + esc(g.name) + "</div>" +
             '<div class="tiny muted">' + esc(g.examples) + "</div></div>" +
             '<span class="risk-badge risk-' + g.risk + '">' + g.risk + "</span>" +
-            '<label class="switch"><input type="checkbox" data-action="rot-toggle" data-key="' + key + '"' + (state.rot.has(key) ? " checked" : "") + "></label>" +
+            '<label class="switch"><input type="checkbox" aria-label="' + esc(track) + '" data-action="rot-toggle" data-key="' + key + '"' + (state.rot.has(key) ? " checked" : "") + "></label>" +
           "</div>";
         }).join("") + "</div>";
     }).join("");
@@ -1405,7 +1406,7 @@
       '<div class="grid g3" style="align-items:start">' +
         '<div style="grid-column:span 2">' + sections + "</div>" +
         '<div class="card" style="position:sticky;top:70px">' +
-          '<div class="card-head"><h3>Rotation rules</h3><span class="spacer"></span>' +
+          '<div class="card-head"><h2>Rotation rules</h2><span class="spacer"></span>' +
             '<span class="pill ' + (highRisk > 3 ? "pill-red" : highRisk ? "pill-amber" : "pill-green") + '">' + highRisk + " high-risk</span></div>" +
           '<ul class="small" style="margin:0 0 14px;padding-left:18px;color:var(--ink-700);line-height:1.8">' +
             "<li>Never apply the same group twice in succession to the same generation.</li>" +
@@ -1464,7 +1465,7 @@
 
       '<div class="grid g3" style="align-items:start">' +
         '<div class="card pad-lg" style="grid-column:span 2">' +
-          '<div class="card-head"><h3>New observation</h3></div>' +
+          '<div class="card-head"><h2>New observation</h2></div>' +
           '<form id="scoutForm" autocomplete="off">' +
             '<div class="grid g3" style="gap:12px">' +
               '<label class="field"><span>Date</span><input type="date" name="date" required value="' + new Date().toISOString().slice(0, 10) + '"></label>' +
@@ -1484,13 +1485,13 @@
         "</div>" +
 
         '<div class="stack">' +
-          '<div class="card"><div class="card-head"><h3>Last 14 counts</h3></div>' +
+          '<div class="card"><div class="card-head"><h2>Last 14 counts</h2></div>' +
             (chart || '<p class="small muted">No data yet.</p>') +
             '<hr class="sep" style="margin:14px 0">' +
             '<div class="small muted">Records: <strong>' + state.scout.length + "</strong><br>Mean count: <strong>" +
               (state.scout.length ? (state.scout.reduce((s, r) => s + (Number(r.count) || 0), 0) / state.scout.length).toFixed(1) : "—") + "</strong></div>" +
           "</div>" +
-          '<div class="card"><div class="card-head"><h3>Backup &amp; restore</h3></div>' +
+          '<div class="card"><div class="card-head"><h2>Backup &amp; restore</h2></div>' +
             '<p class="small" style="color:var(--ink-700)">Your records and the planned rotation live only in this browser. Keep a JSON backup to move them to another device or to survive a cleared cache.</p>' +
             '<div class="stack" style="gap:8px;margin-top:8px">' +
               '<button class="btn btn-sm" data-action="backup-all">' + icon("download") + "Back up all data</button>" +
@@ -1523,7 +1524,7 @@
 
       '<div class="grid g3" style="align-items:start">' +
         '<div class="card pad-lg">' +
-          '<div class="card-head"><h3>Input</h3></div>' +
+          '<div class="card-head"><h2>Input</h2></div>' +
           '<label class="field"><span>Pest preset</span><select data-action="gdd-preset">' + presets + "</select></label>" +
           '<label class="field"><span>Lower development threshold (°C)</span><input type="number" id="gddBase" step="0.1" value="' + (g ? g.base : 10) + '"></label>' +
           '<label class="field"><span>Daily temperatures — one day per line</span>' +
@@ -1535,7 +1536,7 @@
         "</div>" +
 
         '<div style="grid-column:span 2">' +
-          (g ? gddResult(g) : '<div class="empty"><h3>No accumulation yet</h3><p class="small">Paste temperature data or load the example to see the cumulative curve.</p></div>') +
+          (g ? gddResult(g) : '<div class="empty"><h2>No accumulation yet</h2><p class="small">Paste temperature data or load the example to see the cumulative curve.</p></div>') +
         "</div>" +
       "</div>";
   }
@@ -1549,7 +1550,7 @@
         stat("Peak day", g.peak.toFixed(1), "highest single-day accumulation") +
       "</div>" +
       '<div class="card">' +
-        '<div class="card-head"><h3>Cumulative heat units</h3><span class="spacer"></span>' +
+        '<div class="card-head"><h2>Cumulative heat units</h2><span class="spacer"></span>' +
           '<span class="tiny muted">first to last date</span></div>' + chart +
         '<div class="table-wrap" style="margin-top:14px;max-height:260px;overflow-y:auto">' +
           "<table><thead><tr><th>Date</th><th class=\"num\">Tmin</th><th class=\"num\">Tmax</th><th class=\"num\">Daily GDD</th><th class=\"num\">Cumulative</th></tr></thead><tbody>" +
@@ -1602,7 +1603,7 @@
 
       '<div class="grid g2" style="align-items:start">' +
         '<div class="card pad-lg">' +
-          '<div class="card-head"><h3>For an insect or mite</h3></div>' +
+          '<div class="card-head"><h2>For an insect or mite</h2></div>' +
           '<ol class="small" style="padding-left:18px;line-height:1.9;color:var(--ink-700)">' +
             "<li><strong>Dorsal view</strong>, whole body, in focus, with a scale reference (ruler, coin or grid paper).</li>" +
             "<li><strong>Lateral view</strong> showing the legs, pronotum and abdomen.</li>" +
@@ -1616,7 +1617,7 @@
         "</div>" +
 
         '<div class="card pad-lg">' +
-          '<div class="card-head"><h3>For a plant problem</h3></div>' +
+          '<div class="card-head"><h2>For a plant problem</h2></div>' +
           '<ol class="small" style="padding-left:18px;line-height:1.9;color:var(--ink-700)">' +
             "<li><strong>Whole plant</strong> in its context — row, bed, tunnel or field.</li>" +
             "<li><strong>Symptom close-up</strong> on the affected organ, both surfaces if leaves.</li>" +
@@ -1631,7 +1632,7 @@
       "</div>" +
 
       '<div class="card" style="margin-top:16px">' +
-        '<div class="card-head"><h3>What a photograph cannot do</h3></div>' +
+        '<div class="card-head"><h2>What a photograph cannot do</h2></div>' +
         '<div class="table-wrap"><table><thead><tr><th>Question</th><th>What is actually required</th></tr></thead><tbody>' +
           "<tr><td>Which cryptic species of <em>Bemisia tabaci</em>?</td><td>Molecular identification (COI, mtCOI) or isoenzyme analysis.</td></tr>" +
           "<tr><td><em>Tuta absoluta</em> vs <em>Phthorimaea operculella</em>?</td><td>Genitalia dissection or DNA barcoding.</td></tr>" +
@@ -1654,7 +1655,7 @@
 
       '<div class="grid g2" style="align-items:start">' +
         '<div class="card pad-lg">' +
-          '<h3 style="margin-bottom:10px">What it is</h3>' +
+          '<h2 class="h3" style="margin-bottom:10px">What it is</h2>' +
           "<p class=\"small\">A structured field reference for agronomy and plant protection, built around the logic of integrated pest management. " +
           "It organises identification characters, biology, thresholds and management options so that a decision can be justified and recorded — " +
           "not a substitute for a diagnostic laboratory or a licensed agronomist.</p>" +
@@ -1664,11 +1665,11 @@
           "<strong>abiotic, nutritional and physiological disorders</strong> alongside the pest and disease entries, and a per-crop <strong>agronomy guide</strong> " +
           "sets out the climate, soil, cultivar, planting, water and nutrition context that has to be right before a crop problem can even be interpreted.</p>" +
 
-          '<h3 style="margin:18px 0 10px">Geographic emphasis</h3>' +
+          '<h2 class="h3" style="margin:18px 0 10px">Geographic emphasis</h2>' +
           "<p class=\"small\">The crop list, pest status notes and seasonal programmes are weighted towards Mediterranean, semi-arid and Saharan production, " +
           "with Algeria as the reference context: Mitidja and coastal horticulture, the high plains of the east, and the oases of the south.</p>" +
 
-          '<h3 style="margin:18px 0 10px">How the ranking works</h3>' +
+          '<h2 class="h3" style="margin:18px 0 10px">How the ranking works</h2>' +
           "<p class=\"small\">The diagnostic engine scores each library entry against the crop you selected, the organ affected and the symptoms you confirmed. " +
           "The percentage expresses <em>character fit</em>, not probability. A high score with one symptom is still a weak hypothesis, which is why " +
           "the engine caps confidence when fewer than two symptoms are selected.</p>" +
@@ -1680,7 +1681,7 @@
 
         '<div class="stack">' +
           '<div class="card">' +
-            '<div class="card-head"><h3>Standards followed</h3></div>' +
+            '<div class="card-head"><h2>Standards followed</h2></div>' +
             '<ul class="small" style="padding-left:18px;line-height:1.8;color:var(--ink-700)">' +
               "<li>IRAC mode-of-action classification for insecticides and acaricides.</li>" +
               "<li>FRAC code list for fungicides, including multi-site partners.</li>" +
@@ -1691,7 +1692,7 @@
           "</div>" +
 
           '<div class="card">' +
-            '<div class="card-head"><h3>Sources worth consulting</h3></div>' +
+            '<div class="card-head"><h2>Sources worth consulting</h2></div>' +
             '<ul class="small" style="padding-left:18px;line-height:1.9;color:var(--ink-700)">' +
               '<li><a href="https://irac-online.org" target="_blank" rel="noopener">IRAC — Mode of Action classification</a></li>' +
               '<li><a href="https://www.frac.info" target="_blank" rel="noopener">FRAC — Fungicide Resistance Action Committee</a></li>' +

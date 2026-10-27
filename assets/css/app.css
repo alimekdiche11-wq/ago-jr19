@@ -22,7 +22,7 @@
   --ink-900: #14181a;
   --ink-700: #35403c;
   --ink-500: #5d6b64;
-  --ink-400: #7d8a83;
+  --ink-400: #67736c;
   --line:    #e2e7e2;
   --line-2:  #eef1ec;
   --paper:   #f6f7f4;
@@ -257,7 +257,9 @@ a.pill:hover { filter: brightness(.95); border-color: currentColor; }
   box-shadow: var(--shadow-sm);
 }
 .card-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
-.card-head h3 { font-size: 14px; }
+.card-head h2 { font-family: var(--sans); font-size: 14px; letter-spacing: 0; }
+/* Sections that sit under an h2 in the outline but must keep the h3 look. */
+h2.h3 { font-family: var(--sans); font-size: 15px; letter-spacing: 0; }
 .card-head .spacer { margin-left: auto; }
 .card.pad-lg { padding: 24px; }
 
@@ -355,7 +357,7 @@ label.field input, label.field select { width: 100%; }
 .result.lvl-high .bar { background: #1c7a4d; }
 .result.lvl-mid  .bar { background: #d97706; }
 .result.lvl-low  .bar { background: #b8c2ba; }
-.result h4 { font-size: 15px; margin-bottom: 2px; }
+.result h3 { font-size: 15px; margin-bottom: 2px; }
 .result .res-sub { font-size: 12.5px; color: var(--ink-500); }
 .result .res-why { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 7px; }
 .result .res-why .pill { font-weight: 500; font-size: 11px; }
@@ -367,7 +369,7 @@ label.field input, label.field select { width: 100%; }
   text-align: center; padding: 44px 20px; color: var(--ink-400);
   border: 1px dashed #d6ded6; border-radius: var(--r-lg); background: #fbfcfa;
 }
-.empty h3 { color: var(--ink-700); margin-bottom: 6px; }
+.empty h2 { font-family: var(--sans); font-size: 15px; color: var(--ink-700); margin-bottom: 6px; }
 
 /* ---------- wizard ---------- */
 
@@ -546,7 +548,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .fact .fv { font-size: 13px; margin-top: 2px; font-weight: 550; }
 
 .sec { margin-top: 20px; }
-.sec h4 { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--green-700); margin-bottom: 7px; font-weight: 700; }
+.sec h2 { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--green-700); margin-bottom: 7px; font-weight: 700; }
 .sec p, .sec li { font-size: 13.5px; color: var(--ink-700); }
 .sec ul { margin: 0; padding-left: 18px; }
 .sec li { margin-bottom: 4px; }
