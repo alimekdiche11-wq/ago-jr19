@@ -13,7 +13,7 @@
  */
 "use strict";
 
-const CACHE = "agroscope-v24";
+const CACHE = "agroscope-v25";
 
 const SHELL = [
   "./",
@@ -23,15 +23,15 @@ const SHELL = [
   "./assets/icon-192.png",
   "./assets/icon-512.png",
   "./assets/icon-maskable-512.png",
-  "./assets/css/app.css?v=24",
-  "./assets/js/data-core.js?v=24",
-  "./assets/js/data-pests.js?v=24",
-  "./assets/js/data-pests-2.js?v=24",
-  "./assets/js/data-diseases.js?v=24",
-  "./assets/js/data-disorders.js?v=24",
-  "./assets/js/data-guides.js?v=24",
-  "./assets/js/data-ipm.js?v=24",
-  "./assets/js/app.js?v=24",
+  "./assets/css/app.css?v=25",
+  "./assets/js/data-core.js?v=25",
+  "./assets/js/data-pests.js?v=25",
+  "./assets/js/data-pests-2.js?v=25",
+  "./assets/js/data-diseases.js?v=25",
+  "./assets/js/data-disorders.js?v=25",
+  "./assets/js/data-guides.js?v=25",
+  "./assets/js/data-ipm.js?v=25",
+  "./assets/js/app.js?v=25",
 ];
 
 self.addEventListener("install", function (event) {
@@ -66,8 +66,16 @@ self.addEventListener("fetch", function (event) {
   if (req.mode === "navigate") {
     event.respondWith(
       fetch(req).then(function (res) {
-        const copy = res.clone();
-        caches.open(CACHE).then(function (c) { c.put(req, copy); });
+        /* A hosting 5xx is not a page. Fall back to the shell the way a lost
+           connection does, so the field copy still opens, and never let an
+           error response overwrite the cached shell. */
+        if (res && res.status >= 500) {
+          return caches.match("./index.html").then(function (hit) { return hit || res; });
+        }
+        if (res && res.ok) {
+          const copy = res.clone();
+          caches.open(CACHE).then(function (c) { c.put(req, copy); });
+        }
         return res;
       }).catch(function () {
         return caches.match(req).then(function (hit) {

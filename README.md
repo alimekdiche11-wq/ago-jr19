@@ -24,7 +24,7 @@ The mode-of-action rotation tracker, with each label entering by its IRAC / FRAC
 
 A hosted copy is also published via GitHub Pages: **https://alimekdiche11-wq.github.io/ago-jr19/** (same static files, no server or build step).
 
-When served over HTTP(S) it can be installed as a standalone web app from the browser (it ships a `manifest.webmanifest` with 192 px, 512 px and adaptive-safe-zone icons, plus an apple-touch icon for iOS), and a service worker (`sw.js`) caches the app shell so the hosted copy keeps working with no network after the first visit. From a local file it simply opens as an ordinary offline page. The page also carries a 1200×630 preview card, so a link pasted into a chat or a social feed shows the project rather than a bare URL.
+When served over HTTP(S) it can be installed as a standalone web app from the browser (it ships a `manifest.webmanifest` with 192 px, 512 px and adaptive-safe-zone icons, plus an apple-touch icon for iOS), and a service worker (`sw.js`) caches the app shell so the hosted copy keeps working with no network after the first visit, including when the host answers with a server error. From a local file it simply opens as an ordinary offline page. The page also carries a 1200×630 preview card, so a link pasted into a chat or a social feed shows the project rather than a bare URL.
 
 ---
 
@@ -90,7 +90,7 @@ docs/*.png                  README screenshots
 
 Classic scripts attached to a `window.AGRO` namespace, so the app also works from a `file://` URL where ES modules would be blocked.
 
-Asset URLs in `index.html` carry a version query (`?v=13`). When you ship a change, bump that query, the `CACHE` constant in `sw.js` and the matching entries in the service worker's `SHELL` list together, so browsers and the offline cache both pick up the new files.
+Asset URLs in `index.html` carry a version query. When you ship a change, bump that query, the `CACHE` constant in `sw.js` and the matching entries in the service worker's `SHELL` list together, so browsers and the offline cache both pick up the new files.
 
 ---
 
