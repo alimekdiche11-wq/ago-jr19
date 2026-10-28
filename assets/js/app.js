@@ -2147,14 +2147,21 @@
     }
   });
 
-  /* ---------------- scouting export ---------------- */
+  /* ---------------- CSV export ---------------- */
+
+  /* One CSV field, always quoted and with an embedded quote doubled. Every
+     export goes through this: a single unescaped quote in an observation name
+     ("Tuta \"absoluta\"") shifts every following column in a spreadsheet. */
+  function csvCell(v) {
+    return '"' + String(v == null ? "" : v).replace(/"/g, '""') + '"';
+  }
 
   function exportScout() {
     if (!state.scout.length) { toast("Nothing to export yet."); return; }
     const head = ["date", "crop", "observation", "unit", "count", "notes"];
-    const lines = [head.join(",")].concat(state.scout.map((r) =>
-      [r.date, cropName(r.crop), r.pest, r.unit, r.count, (r.notes || "").replace(/"/g, '""')]
-        .map((v) => '"' + String(v == null ? "" : v) + '"').join(",")));
+    const lines = [head.map(csvCell).join(",")].concat(state.scout.map((r) =>
+      [r.date, cropName(r.crop), r.pest, r.unit, r.count, r.notes]
+        .map(csvCell).join(",")));
     const blob = new Blob(["\ufeff" + lines.join("\r\n")], { type: "text/csv;charset=utf-8;" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -2192,7 +2199,7 @@
   function diagCsvText() {
     const d = state.diag;
     const rows = diagnose().slice(0, 6);
-    const cell = (v) => '"' + String(v == null ? "" : v).replace(/"/g, '""') + '"';
+    const cell = csvCell;
     const organ = (AGRO.organs.find((o) => o.id === d.organ) || {}).label || "";
     const pattern = (AGRO.patterns.find((p) => p.id === d.pattern) || {}).label || "";
     const head = ["rank", "candidate", "scientific_name", "kind", "fit_percent",
@@ -2256,13 +2263,13 @@
   function exportSeq() {
     if (!state.seq.length) { toast("Nothing to export yet."); return; }
     const head = ["season", "crop", "family", "previous_crop", "same_family", "shared_entries"];
-    const lines = [head.join(",")];
+    const lines = [head.map(csvCell).join(",")];
     state.seq.forEach((id, i) => {
       const prev = i > 0 ? state.seq[i - 1] : null;
       const sameFam = prev ? String(!!(familyOf(prev) && familyOf(prev) === familyOf(id))) : "";
       const shared = prev ? sharedRisk(prev, id).length : "";
       lines.push([i + 1, cropName(id), familyOf(id) || "", prev ? cropName(prev) : "", sameFam, shared]
-        .map((v) => '"' + String(v) + '"').join(","));
+        .map(csvCell).join(","));
     });
     downloadBlob(new Blob(["\ufeff" + lines.join("\r\n")], { type: "text/csv;charset=utf-8;" }),
       "agroscope-rotation-" + new Date().toISOString().slice(0, 10) + ".csv");
