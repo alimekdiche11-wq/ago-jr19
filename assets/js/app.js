@@ -156,6 +156,10 @@
     /* Which observation + unit the scouting trend is showing; null means the
        most recently recorded series. Not persisted: it follows the data. */
     scoutSeries: null,
+    /* What is typed into the observation form but not yet saved. Kept across
+       re-renders (switching the chart series, deleting a row) so a half-typed
+       field note is not thrown away by a click somewhere else. */
+    scoutDraft: null,
     seq: loadSeq(),
     gdd: null,
     cropGuide: null,
@@ -1552,8 +1556,11 @@
           icon("trash") + "</button></td></tr>").join("") +
       "</tbody></table></div>" : "";
 
-    const crops = AGRO.crops.map((c) => '<option value="' + c.id + '">' + esc(c.name) + "</option>").join("");
-    const units = AGRO.thresholdUnits.map((u) => "<option>" + esc(u) + "</option>").join("");
+    const draft = state.scoutDraft || {};
+    const crops = AGRO.crops.map((c) => '<option value="' + c.id + '"' +
+      ((draft.crop || AGRO.crops[0].id) === c.id ? " selected" : "") + ">" + esc(c.name) + "</option>").join("");
+    const units = AGRO.thresholdUnits.map((u) => "<option" +
+      (draft.unit === u ? " selected" : "") + ">" + esc(u) + "</option>").join("");
 
     return '<div class="page-head"><div class="grow">' +
         '<div class="eyebrow">Field records</div>' +
@@ -1569,18 +1576,22 @@
           '<div class="card-head"><h2>New observation</h2></div>' +
           '<form id="scoutForm" autocomplete="off">' +
             '<div class="grid g3" style="gap:12px">' +
-              '<label class="field"><span>Date</span><input type="date" name="date" required value="' + new Date().toISOString().slice(0, 10) + '"></label>' +
+              '<label class="field"><span>Date</span><input type="date" name="date" required value="' +
+                esc(draft.date || new Date().toISOString().slice(0, 10)) + '"></label>' +
               '<label class="field"><span>Crop</span><select name="crop">' + crops + "</select></label>" +
-              '<label class="field"><span>Count</span><input type="number" name="count" min="0" step="0.1" required placeholder="0"></label>' +
+              '<label class="field"><span>Count</span><input type="number" name="count" min="0" step="0.1" required placeholder="0" value="' +
+                esc(draft.count || "") + '"></label>' +
             "</div>" +
             '<div class="grid g2" style="gap:12px">' +
               '<label class="field"><span>Pest, disease or observation</span>' +
-                '<input type="text" name="pest" list="pestNames" required placeholder="e.g. Tuta absoluta">' +
+                '<input type="text" name="pest" list="pestNames" required placeholder="e.g. Tuta absoluta" value="' +
+                  esc(draft.pest || "") + '">' +
                 '<datalist id="pestNames">' + AGRO.pests.map((p) => '<option value="' + esc(p.name) + '">').join("") + "</datalist></label>" +
               '<label class="field"><span>Unit</span><select name="unit">' + units + "</select></label>" +
             "</div>" +
             '<label class="field"><span>Notes — block, cultivar, stage, action taken</span>' +
-              '<textarea name="notes" rows="3" placeholder="Block B3, Marmande, first fruit set. 4 mines on 20 plants; beneficials present."></textarea></label>' +
+              '<textarea name="notes" rows="3" placeholder="Block B3, Marmande, first fruit set. 4 mines on 20 plants; beneficials present.">' +
+                esc(draft.notes || "") + "</textarea></label>" +
             '<button class="btn btn-primary" type="submit">' + icon("plus") + "Save observation</button>" +
           "</form>" +
         "</div>" +
@@ -2025,6 +2036,19 @@
     }
   });
 
+  /* Keep whatever is typed in the observation form: switching the chart series
+     or deleting a row re-renders the view, and a half-entered field note is
+     work that must not disappear because of a click somewhere else. */
+  document.addEventListener("input", function (e) {
+    const f = e.target && e.target.closest ? e.target.closest("#scoutForm") : null;
+    if (!f) return;
+    const d = {};
+    ["date", "crop", "count", "pest", "unit", "notes"].forEach((n) => {
+      if (f.elements[n]) d[n] = f.elements[n].value;
+    });
+    state.scoutDraft = d;
+  });
+
   document.addEventListener("submit", function (e) {
     if (e.target.id !== "scoutForm") return;
     e.preventDefault();
@@ -2041,6 +2065,7 @@
     if (!rec.pest) { toast("Describe the observation first."); return; }
     state.scout.push(rec);
     saveScout();
+    state.scoutDraft = null;
     render();
     toast("Observation saved.");
   });
