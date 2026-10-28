@@ -99,7 +99,11 @@ Asset URLs in `index.html` carry a version query. When you ship a change, bump t
 The data scripts are cross-referenced by id, so a typo can silently make an entry
 unreachable. A small Node script checks the whole dataset — unique ids, resolvable
 crop/organ/symptom references, required fields, severity range, complete chemistry
-and lookalikes, guide completeness and orphan symptoms:
+and lookalikes, guide completeness and orphan symptoms — and now also walks the
+dichotomous key (every option lands on a couplet or a taxon, every couplet is
+reachable from the start, no loops, every taxon is offered as an outcome), the IPM
+programmes (known crops, known action types, every stage populated) and the field
+tools (unique threshold units, GDD presets with a plausible base):
 
 ```sh
 node tools/audit-dataset.js
