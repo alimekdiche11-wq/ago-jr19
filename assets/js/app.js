@@ -1661,9 +1661,14 @@
 
   function viewGdd() {
     const g = state.gdd;
-    const presets = AGRO.gddPresets.map((p) =>
-      '<option value="' + p.base + '"' + (g && Number(g.base) === Number(p.base) ? " selected" : "") + ">" +
-      esc(p.name) + " (base " + p.base + " °C)</option>").join("");
+    const base = g ? Number(g.base) : 10;
+    /* The number field is the authority and the list is a command: it fills
+       the base in and returns to the placeholder, so it can never show a
+       preset the calculation is not using. */
+    const presets = '<option value="" selected>Choose a preset…</option>' +
+      AGRO.gddPresets.map((p) =>
+        '<option value="' + p.base + '">' +
+        esc(p.name) + " (base " + p.base + " °C)</option>").join("");
 
     return '<div class="page-head"><div class="grow">' +
         '<div class="eyebrow">Phenology model</div>' +
@@ -1676,7 +1681,7 @@
         '<div class="card pad-lg">' +
           '<div class="card-head"><h2>Input</h2></div>' +
           '<label class="field"><span>Pest preset</span><select data-action="gdd-preset">' + presets + "</select></label>" +
-          '<label class="field"><span>Lower development threshold (°C)</span><input type="number" id="gddBase" step="0.1" value="' + (g ? g.base : 10) + '"></label>' +
+          '<label class="field"><span>Lower development threshold (°C)</span><input type="number" id="gddBase" step="0.1" min="-5" max="30" value="' + base + '"></label>' +
           '<label class="field"><span>Daily temperatures — one day per line</span>' +
             '<textarea id="gddData" rows="9" placeholder="2026-03-01, 7, 19&#10;2026-03-02, 8, 21&#10;2026-03-03, 9, 23">' + (g ? esc(g.raw) : "") + "</textarea></label>" +
           '<div class="row"><button class="btn btn-primary" data-action="gdd-run">' + icon("gdd") + "Calculate</button>" +
@@ -2091,9 +2096,13 @@
     }
     if (action === "gdd-preset") {
       const base = el.value;
+      if (!base) return;
       const preset = AGRO.gddPresets.find((p) => String(p.base) === String(base));
       const input = $("#gddBase");
       if (input) input.value = base;
+      /* A command, not a state: back to the placeholder, so the list never
+         claims a preset that the number field no longer holds. */
+      el.value = "";
       toast(preset ? preset.name + " — " + preset.note : "Base temperature applied.");
       return;
     }
@@ -2370,6 +2379,9 @@
     const base = parseFloat($("#gddBase").value);
     const raw = $("#gddData").value.trim();
     if (isNaN(base)) { toast("Enter a valid base temperature."); return; }
+    /* No crop or pest has a development threshold outside this range; a value
+       here is a typo, and it would silently zero every day. */
+    if (base < -5 || base > 30) { toast("Base temperature must be between -5 and 30 °C."); return; }
     if (!raw) { toast("Paste at least one line of temperature data."); return; }
 
     const rows = [];
