@@ -1653,10 +1653,30 @@
       "</div>";
   }
 
+  /* "2, 5 and 9 (+3 more)" for a list of line numbers. */
+  function lineRefs(nums) {
+    const shown = nums.slice(0, 8);
+    const list = shown.length === 1 ? String(shown[0]) :
+      shown.slice(0, -1).join(", ") + " and " + shown[shown.length - 1];
+    return list + (nums.length > shown.length ? " (+" + (nums.length - shown.length) + " more)" : "");
+  }
+
   function gddResult(g) {
     const chart = lineChart(g.cum, g.days);
     const total = Math.round(g.total);
-    return '<div class="grid g3" style="margin-bottom:14px">' +
+    const skipped = g.skipped || [], swapped = g.swapped || [];
+    /* Silent omission is the problem: a reader who pastes thirty days and
+       sees twenty-eight must be told which lines did not count. */
+    const reading = skipped.length || swapped.length ?
+      '<div class="callout" style="margin-bottom:14px">' +
+        (skipped.length ? "<strong>" + (skipped.length === 1 ? "One line was ignored." : skipped.length + " lines were ignored.") + "</strong> " +
+          (skipped.length === 1 ? "Line " : "Lines ") + lineRefs(skipped) +
+          " did not contain a usable temperature pair, so the totals below exclude " +
+          (skipped.length === 1 ? "it" : "them") + ". " : "") +
+        (swapped.length ? "<strong>Tmin above Tmax on " + (swapped.length === 1 ? "line " : "lines ") + lineRefs(swapped) +
+          ".</strong> " + (swapped.length === 1 ? "That pair was" : "Those pairs were") + " read as (min, max)." : "") +
+      "</div>" : "";
+    return reading + '<div class="grid g3" style="margin-bottom:14px">' +
         stat("Accumulated GDD", total, plural(g.days, "day", "days") + " · base " + g.base + " °C") +
         stat("Daily mean", (total / Math.max(1, g.days)).toFixed(1), "heat units per day") +
         stat("Peak day", g.peak.toFixed(1), "highest single-day accumulation") +
@@ -2286,17 +2306,30 @@
     if (!raw) { toast("Paste at least one line of temperature data."); return; }
 
     const rows = [];
+    const skipped = [];
+    const swapped = [];
     let cum = 0, peak = 0;
+
+    /* A temperature in degrees Celsius outside this range is a typo or a date
+       read as a number, not a reading; -80..80 covers every station record. */
+    const plausible = (v) => v >= -80 && v <= 80;
+    const dateLike = (s) => /^\d{4}-\d{1,2}-\d{1,2}$/.test(s) ||
+      /^\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{2,4}$/.test(s) || /^[A-Za-z]{3,}/.test(s);
 
     raw.split(/\r?\n/).forEach((line, idx) => {
       const parts = line.split(/[,;\t]+/).map((s) => s.trim()).filter(Boolean);
       if (!parts.length) return;
       let date, tmin, tmax;
       if (parts.length >= 3) { date = parts[0]; tmin = parseFloat(parts[1]); tmax = parseFloat(parts[2]); }
-      else if (parts.length === 2) { date = "Day " + (idx + 1); tmin = parseFloat(parts[0]); tmax = parseFloat(parts[1]); }
-      else return;
-      if (isNaN(tmin) || isNaN(tmax)) return;
-      if (tmin > tmax) { const t = tmin; tmin = tmax; tmax = t; }
+      else if (parts.length === 2) {
+        /* Two fields mean (tmin, tmax) only when the first is not a date.
+           Otherwise a truncated "2026-10-03, 9" would be read as 2026 °C. */
+        if (dateLike(parts[0])) { skipped.push(idx + 1); return; }
+        date = "Day " + (idx + 1); tmin = parseFloat(parts[0]); tmax = parseFloat(parts[1]);
+      }
+      else { skipped.push(idx + 1); return; }
+      if (isNaN(tmin) || isNaN(tmax) || !plausible(tmin) || !plausible(tmax)) { skipped.push(idx + 1); return; }
+      if (tmin > tmax) { const t = tmin; tmin = tmax; tmax = t; swapped.push(idx + 1); }
       const dd = Math.max(0, (tmin + tmax) / 2 - base);
       cum += dd;
       if (dd > peak) peak = dd;
@@ -2304,9 +2337,14 @@
     });
 
     if (!rows.length) { toast("No valid lines. Use: date, tmin, tmax"); return; }
-    state.gdd = { base: base, raw: raw, rows: rows, cum: rows.map((r) => r.cum), days: rows.length, total: cum, peak: peak };
+    state.gdd = {
+      base: base, raw: raw, rows: rows, cum: rows.map((r) => r.cum),
+      days: rows.length, total: cum, peak: peak,
+      skipped: skipped, swapped: swapped
+    };
     render();
-    toast(plural(rows.length, "day accumulated.", "days accumulated."));
+    toast(plural(rows.length, "day accumulated.", "days accumulated.") +
+      (skipped.length ? " " + plural(skipped.length, "line ignored.", "lines ignored.") : ""));
   }
 
   function loadGddSample() {
