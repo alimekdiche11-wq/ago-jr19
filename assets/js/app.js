@@ -1691,8 +1691,12 @@
   }
 
   function gddResult(g) {
-    const chart = lineChart(g.cum, g.days);
     const total = Math.round(g.total);
+    /* The curve is a picture of numbers the page states elsewhere, but a
+       screen reader landing on it gets the sentence, not just "a chart". */
+    const chart = lineChart(g.cum, g.days, "Cumulative heat units: " + total + " over " +
+      plural(g.days, "day", "days") + ", base " + g.base + " °C, highest single day " +
+      g.peak.toFixed(1) + ".");
     const skipped = g.skipped || [], swapped = g.swapped || [];
     /* Silent omission is the problem: a reader who pastes thirty days and
        sees twenty-eight must be told which lines did not count. */
@@ -1722,7 +1726,7 @@
           "</tbody></table></div></div>";
   }
 
-  function lineChart(values, labels) {
+  function lineChart(values, labels, label) {
     if (!values.length) return "";
     const w = 680, h = 170, padL = 38, padR = 12, padT = 12, padB = 22;
     const max = Math.max.apply(null, values) || 1;
@@ -1741,7 +1745,8 @@
       grid += '<text x="' + (padL - 6) + '" y="' + (y(v) + 3).toFixed(1) + '" text-anchor="end">' + Math.round(v) + "</text>";
     }
 
-    return '<svg class="chart" viewBox="0 0 ' + w + " " + h + '" role="img" aria-label="Cumulative degree days">' +
+    return '<svg class="chart" viewBox="0 0 ' + w + " " + h + '" role="img" aria-label="' +
+      esc(label || "Cumulative degree days") + '">' +
       grid + '<polygon class="area" points="' + area + '"/>' +
       '<polyline class="line" points="' + line + '"/>' +
       (values.length <= 40 ? values.map((v, i) => '<circle class="pt" cx="' + x(i).toFixed(1) + '" cy="' + y(v).toFixed(1) + '" r="2.4"/>').join("") : "") +
