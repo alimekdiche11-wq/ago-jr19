@@ -2108,7 +2108,7 @@
       document.activeElement.click();
       return;
     }
-    if (e.key === "Escape") { closeModal(); $("#sidebar").classList.remove("open"); }
+    if (e.key === "Escape") { closeModal(); $("#sidebar").classList.remove("open"); syncMenu(); }
     if (e.key === "Tab" && !$("#modal").hidden) {
       const focusables = Array.prototype.slice.call(
         $("#modal").querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')
@@ -2132,12 +2132,18 @@
   });
 
   /* menu */
+  function syncMenu() {
+    const open = $("#sidebar").classList.contains("open");
+    $("#menuBtn").setAttribute("aria-expanded", open ? "true" : "false");
+  }
   $("#menuBtn").addEventListener("click", function () {
     $("#sidebar").classList.toggle("open");
+    syncMenu();
   });
   document.addEventListener("click", function (e) {
     if (window.innerWidth <= 940 && !e.target.closest("#sidebar") && !e.target.closest("#menuBtn")) {
       $("#sidebar").classList.remove("open");
+      syncMenu();
     }
   });
 
