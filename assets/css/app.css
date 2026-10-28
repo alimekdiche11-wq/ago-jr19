@@ -787,6 +787,13 @@ button:focus-visible,
   html[data-theme="dark"] .btn-danger { color: #ef8f8f; border-color: #4a2626; background: #1b1514; }
   html[data-theme="dark"] .btn-danger:hover { background: #2a1717; }
   html[data-theme="dark"] .icon-btn:hover { background: #1e2a23; border-color: #38443c; }
+  /* White on the dark theme's light green only reaches 3.4:1. The primary
+     button and the active step number use a deeper green so a white label
+     still passes at 5.3:1, with a hover one shade lighter that stays above
+     4.5:1. These come after .btn:hover so the colour survives it. */
+  html[data-theme="dark"] .btn-primary { background: #237a52; border-color: #237a52; color: #fff; }
+  html[data-theme="dark"] .btn-primary:hover { background: #288356; border-color: #288356; }
+  html[data-theme="dark"] .step.on .num { background: #237a52; }
 
   /* pills */
   html[data-theme="dark"] .pill { background: #1e2a23; color: var(--ink-700); }
@@ -830,6 +837,10 @@ button:focus-visible,
   html[data-theme="dark"] .tag-cult    { background: #2c2011; color: #e0a24a; }
   html[data-theme="dark"] .tag-mech    { background: #241f36; color: #b9a6f0; }
   html[data-theme="dark"] .tag-bio     { background: #16301f; color: #7fe0ab; }
+  /* green on the green-100 tint falls to 4.2:1 in dark; lighten the text */
+  html[data-theme="dark"] .risk-low,
+  html[data-theme="dark"] .step.done .num,
+  html[data-theme="dark"] .key-opt .k-let { color: #7fe0ab; }
 
   /* rotation planner */
   html[data-theme="dark"] .transition { background: #141d18; }
