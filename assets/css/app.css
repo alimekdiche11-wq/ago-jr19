@@ -578,6 +578,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   display: flex; align-items: center; gap: 14px;
   animation: rise .18s ease;
 }
+.toast[hidden] { display: none; }
 /* A toast with an undo action stays on screen long enough to be reached. */
 .toast-btn {
   border: 1px solid rgba(255,255,255,.35); background: transparent; color: inherit;
