@@ -710,6 +710,13 @@ button:focus-visible,
 @media print {
   .sidebar, .topbar, .foot, .modal-x, .modal-backdrop, .toast { display: none !important; }
   .page-actions, .toolbar, .skip-link, .btn { display: none !important; }
+  /* A printed log is the evidence, not the data-entry screen: the observation
+     form and the backup card have no meaning on paper. */
+  .no-print { display: none !important; }
+  .scout-grid { display: block !important; }
+  .table-wrap { overflow: visible; }
+  tr { break-inside: avoid; }
+  .col-act { display: none !important; }
   /* An open profile is printed on its own. The listing underneath is what the
      reader has just left, and carrying it onto the paper would bury the
      profile under several pages that are not the document. */

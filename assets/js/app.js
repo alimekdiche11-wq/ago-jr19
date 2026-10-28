@@ -1514,15 +1514,18 @@
     const unit = list.length ? (list[0].unit || "") : "";
     const mean = shown.length ? shown.reduce((s, r) => s + (Number(r.count) || 0), 0) / shown.length : 0;
 
+    /* The selector is a screen control; on paper the same choice is stated as
+       text so the printed page says which series the bars belong to. */
     const picker = keys.length > 1 ?
-      '<label class="field" style="margin:0 0 6px"><span>Series</span>' +
+      '<label class="field no-print" style="margin:0 0 6px"><span>Series</span>' +
         '<select data-action="scout-series" aria-label="Crop, observation and unit to chart">' +
           keys.map((k) => {
             const l = series.get(k);
             return '<option value="' + esc(k) + '"' + (k === chosen ? " selected" : "") + ">" +
               esc(labelOf(l)) + " (" + l.length + ")</option>";
           }).join("") +
-        "</select></label>" :
+        "</select></label>" +
+        '<div class="print-only small strong">' + esc(label) + "</div>" :
       '<div class="small strong">' + esc(label) + "</div>";
 
     const chart = counts.length ?
@@ -1542,7 +1545,7 @@
 
     const table = rows.length ?
       '<div class="table-wrap"><table><thead><tr>' +
-        '<th scope="col">Date</th><th scope="col">Crop</th><th scope="col">Observation</th><th scope="col">Unit</th><th scope="col" class="num">Count</th><th scope="col">Notes</th><th scope="col"><span class="sr-only">Actions</span></th>' +
+        '<th scope="col">Date</th><th scope="col">Crop</th><th scope="col">Observation</th><th scope="col">Unit</th><th scope="col" class="num">Count</th><th scope="col">Notes</th><th scope="col" class="col-act"><span class="sr-only">Actions</span></th>' +
       "</tr></thead><tbody>" +
       rows.map((r, i) =>
         "<tr><td class=\"nowrap\">" + esc(r.date) + "</td>" +
@@ -1551,7 +1554,7 @@
         "<td class=\"small muted\">" + esc(r.unit || "—") + "</td>" +
         '<td class="num mono">' + esc(r.count) + "</td>" +
         '<td class="small">' + esc(r.notes || "") + "</td>" +
-        '<td><button class="btn btn-sm btn-danger" data-action="scout-del" data-id="' + esc(r.id) +
+        '<td class="col-act"><button class="btn btn-sm btn-danger" data-action="scout-del" data-id="' + esc(r.id) +
           '" aria-label="' + esc("Delete observation: " + (r.pest || "record") + ", " + r.date) + '">' +
           icon("trash") + "</button></td></tr>").join("") +
       "</tbody></table></div>" : "";
@@ -1565,14 +1568,16 @@
     return '<div class="page-head"><div class="grow">' +
         '<div class="eyebrow">Field records</div>' +
         "<h1>Scouting log</h1>" +
-        '<p class="lede">Observations are stored in this browser only. Export the CSV at the end of each week — it is your evidence base for thresholds and for what actually worked.</p>' +
+        '<p class="lede no-print">Observations are stored in this browser only. Export the CSV at the end of each week — it is your evidence base for thresholds and for what actually worked.</p>' +
+        '<p class="lede print-only">Printed ' + new Date().toISOString().slice(0, 10) + ' &middot; ' +
+          plural(state.scout.length, "record", "records") + '. Counts are only comparable within one crop, observation and unit.</p>' +
       "</div>" +
       '<div class="page-actions">' +
         '<button class="btn" data-action="scout-export">' + icon("download") + "Export CSV</button>" +
         '<button class="btn btn-ghost" data-action="scout-clear">Clear all</button></div></div>' +
 
-      '<div class="grid g3" style="align-items:start">' +
-        '<div class="card pad-lg" style="grid-column:span 2">' +
+      '<div class="grid g3 scout-grid" style="align-items:start">' +
+        '<div class="card pad-lg no-print" style="grid-column:span 2">' +
           '<div class="card-head"><h2>New observation</h2></div>' +
           '<form id="scoutForm" autocomplete="off">' +
             '<div class="grid g3" style="gap:12px">' +
@@ -1603,7 +1608,7 @@
             '<div class="small muted">Records: <strong>' + state.scout.length + "</strong>" +
               (keys.length > 1 ? "<br>Separate series: <strong>" + keys.length + "</strong>" : "") + "</div>" +
           "</div>" +
-          '<div class="card"><div class="card-head"><h2>Backup &amp; restore</h2></div>' +
+          '<div class="card no-print"><div class="card-head"><h2>Backup &amp; restore</h2></div>' +
             '<p class="small" style="color:var(--ink-700)">Your records, the planned rotation and the marked mode-of-action groups live only in this browser. Keep a JSON backup to move them to another device or to survive a cleared cache.</p>' +
             '<div class="stack" style="gap:8px;margin-top:8px">' +
               '<button class="btn btn-sm" data-action="backup-all">' + icon("download") + "Back up all data</button>" +
