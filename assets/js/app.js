@@ -2099,7 +2099,10 @@
         else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
       }
     }
-    if (e.key === "/" && document.activeElement !== search && !/input|textarea|select/i.test(document.activeElement.tagName)) {
+    /* The search box is behind a dialog, so the shortcut must not pull focus
+       out of an open profile. */
+    if (e.key === "/" && $("#modal").hidden && document.activeElement !== search &&
+        !/input|textarea|select/i.test(document.activeElement.tagName)) {
       e.preventDefault(); search.focus();
     }
     if (e.key === "?" && !/input|textarea|select/i.test(document.activeElement.tagName)) {
