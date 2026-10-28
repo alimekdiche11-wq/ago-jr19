@@ -1520,7 +1520,7 @@
               (state.scout.length ? (state.scout.reduce((s, r) => s + (Number(r.count) || 0), 0) / state.scout.length).toFixed(1) : "—") + "</strong></div>" +
           "</div>" +
           '<div class="card"><div class="card-head"><h2>Backup &amp; restore</h2></div>' +
-            '<p class="small" style="color:var(--ink-700)">Your records and the planned rotation live only in this browser. Keep a JSON backup to move them to another device or to survive a cleared cache.</p>' +
+            '<p class="small" style="color:var(--ink-700)">Your records, the planned rotation and the marked mode-of-action groups live only in this browser. Keep a JSON backup to move them to another device or to survive a cleared cache.</p>' +
             '<div class="stack" style="gap:8px;margin-top:8px">' +
               '<button class="btn btn-sm" data-action="backup-all">' + icon("download") + "Back up all data</button>" +
               '<label class="btn btn-sm" style="cursor:pointer;justify-content:center">' + icon("plus") + "Restore from backup" +
@@ -2069,7 +2069,10 @@
       schema: 1,
       exportedAt: new Date().toISOString(),
       scout: state.scout,
-      sequence: state.seq
+      sequence: state.seq,
+      /* The resistance record is seasonal and cannot be re-derived from the
+         other two, so it travels with the backup as plain "scheme:code" keys. */
+      rotation: Array.from(state.rot)
     };
     downloadBlob(new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" }),
       "agroscope-backup-" + new Date().toISOString().slice(0, 10) + ".json");
@@ -2092,17 +2095,33 @@
     toast("Rotation CSV exported.");
   }
 
-  function importAll(file) {    const reader = new FileReader();
+  function importAll(file) {
+    const reader = new FileReader();
     reader.onload = function () {
       try {
         const d = JSON.parse(reader.result);
         if (!d || d.app !== "AgroScope") throw new Error("not an AgroScope backup");
         if (Array.isArray(d.scout)) state.scout = d.scout;
         if (Array.isArray(d.sequence)) state.seq = d.sequence.filter((id) => AGRO.cropGuides[id]);
+        /* A backup written before the rotation tracker existed has no
+           rotation field: leave the current selection alone rather than
+           silently clearing a record the user is keeping. When the field is
+           present, keep only groups that still exist in the dataset. */
+        if (Array.isArray(d.rotation)) {
+          const valid = new Set(AGRO.moa.map((g) => g.scheme + ":" + g.code));
+          state.rot = new Set(d.rotation.filter((k) => valid.has(k)));
+          saveRot();
+        }
         saveScout();
         saveSeq();
         render();
-        toast("Backup restored.");
+        /* Say what actually came back: a file that only holds a sequence
+           should not look like a full restore. */
+        const parts = [];
+        if (Array.isArray(d.scout)) parts.push(plural(state.scout.length, "record", "records"));
+        if (Array.isArray(d.sequence)) parts.push(plural(state.seq.length, "crop", "crops") + " planned");
+        if (Array.isArray(d.rotation)) parts.push(plural(state.rot.size, "group", "groups") + " tracked");
+        toast(parts.length ? "Restored " + parts.join(", ") + "." : "Backup restored.");
       } catch (err) {
         toast("That file is not a valid AgroScope backup.");
       }
