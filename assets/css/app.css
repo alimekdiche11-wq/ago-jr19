@@ -586,6 +586,11 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .spacer { margin-left: auto; }
 hr.sep { border: 0; border-top: 1px solid var(--line); margin: 20px 0; }
 .hidden { display: none !important; }
+/* Text that belongs to the accessibility tree only. */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
 .skip-link {
   position: absolute; left: 8px; top: 8px; z-index: 500;
   transform: translateY(-160%); transition: transform .15s ease;

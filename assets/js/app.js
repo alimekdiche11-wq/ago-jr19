@@ -1175,7 +1175,7 @@
 
     const chem = (p.chem || []).length ?
       '<div class="table-wrap" style="border:0"><table class="chem-table"><thead><tr>' +
-      (isDisorder ? "<th>Amendment / measure</th><th>Type</th><th>Note</th>" : "<th>Active ingredient</th><th>MoA</th><th>Note</th>") +
+      (isDisorder ? '<th scope="col">Amendment / measure</th><th scope="col">Type</th><th scope="col">Note</th>' : '<th scope="col">Active ingredient</th><th scope="col">MoA</th><th scope="col">Note</th>') +
       "</tr></thead><tbody>" +
       p.chem.map((c) => "<tr><td><strong>" + esc(c.ai) + "</strong></td><td><span class=\"moa-code\">" + esc(c.moa) + "</span></td><td class=\"small\">" + esc(c.note) + "</td></tr>").join("") +
       "</tbody></table></div>"
@@ -1191,7 +1191,7 @@
       "must be read from the product label authorised in your country. Nothing here overrides that label.</div>";
 
     const look = (p.lookalikes || []).length ?
-      '<div class="table-wrap"><table><thead><tr><th>' + (isDisorder ? "Confusable cause" : "Confusable species") + '</th><th>How to separate</th></tr></thead><tbody>' +
+      '<div class="table-wrap"><table><thead><tr><th scope="col">' + (isDisorder ? "Confusable cause" : "Confusable species") + '</th><th scope="col">How to separate</th></tr></thead><tbody>' +
       p.lookalikes.map((l) => "<tr><td><strong>" + esc(l.n) + "</strong></td><td class=\"small\">" + esc(l.d) + "</td></tr>").join("") +
       "</tbody></table></div>" : "";
 
@@ -1318,7 +1318,7 @@
           t.diag.map((d) => "<li>" + esc(d) + "</li>").join("") + "</ul></div>" +
 
         (t.families && t.families.length ?
-          '<div class="sec"><h2>Families to consider</h2><div class="table-wrap"><table><thead><tr><th>Family</th><th>Field note</th></tr></thead><tbody>' +
+          '<div class="sec"><h2>Families to consider</h2><div class="table-wrap"><table><thead><tr><th scope="col">Family</th><th scope="col">Field note</th></tr></thead><tbody>' +
           t.families.map((f) => "<tr><td><strong>" + esc(f.n) + "</strong></td><td class=\"small\">" + esc(f.d) + "</td></tr>").join("") +
           "</tbody></table></div></div>" : "") +
 
@@ -1472,7 +1472,7 @@
 
     const table = rows.length ?
       '<div class="table-wrap"><table><thead><tr>' +
-        "<th>Date</th><th>Crop</th><th>Observation</th><th>Unit</th><th class=\"num\">Count</th><th>Notes</th><th></th>" +
+        '<th scope="col">Date</th><th scope="col">Crop</th><th scope="col">Observation</th><th scope="col">Unit</th><th scope="col" class="num">Count</th><th scope="col">Notes</th><th scope="col"><span class="sr-only">Actions</span></th>' +
       "</tr></thead><tbody>" +
       rows.map((r, i) =>
         "<tr><td class=\"nowrap\">" + esc(r.date) + "</td>" +
@@ -1481,7 +1481,9 @@
         "<td class=\"small muted\">" + esc(r.unit || "—") + "</td>" +
         '<td class="num mono">' + esc(r.count) + "</td>" +
         '<td class="small">' + esc(r.notes || "") + "</td>" +
-        '<td><button class="btn btn-sm btn-danger" data-action="scout-del" data-id="' + esc(r.id) + '" aria-label="Delete">' + icon("trash") + "</button></td></tr>").join("") +
+        '<td><button class="btn btn-sm btn-danger" data-action="scout-del" data-id="' + esc(r.id) +
+          '" aria-label="' + esc("Delete observation: " + (r.pest || "record") + ", " + r.date) + '">' +
+          icon("trash") + "</button></td></tr>").join("") +
       "</tbody></table></div>" : "";
 
     const crops = AGRO.crops.map((c) => '<option value="' + c.id + '">' + esc(c.name) + "</option>").join("");
@@ -1586,7 +1588,7 @@
         '<div class="card-head"><h2>Cumulative heat units</h2><span class="spacer"></span>' +
           '<span class="tiny muted">first to last date</span></div>' + chart +
         '<div class="table-wrap" style="margin-top:14px;max-height:260px;overflow-y:auto">' +
-          "<table><thead><tr><th>Date</th><th class=\"num\">Tmin</th><th class=\"num\">Tmax</th><th class=\"num\">Daily GDD</th><th class=\"num\">Cumulative</th></tr></thead><tbody>" +
+          "<table><thead><tr><th scope=\"col\">Date</th><th scope=\"col\" class=\"num\">Tmin</th><th scope=\"col\" class=\"num\">Tmax</th><th scope=\"col\" class=\"num\">Daily GDD</th><th scope=\"col\" class=\"num\">Cumulative</th></tr></thead><tbody>" +
           g.rows.map((r) =>
             "<tr><td class=\"nowrap small\">" + esc(r.date) + "</td><td class=\"num mono\">" + r.tmin + "</td>" +
             "<td class=\"num mono\">" + r.tmax + "</td><td class=\"num mono\">" + r.dd.toFixed(1) + "</td>" +
@@ -1666,7 +1668,7 @@
 
       '<div class="card" style="margin-top:16px">' +
         '<div class="card-head"><h2>What a photograph cannot do</h2></div>' +
-        '<div class="table-wrap"><table><thead><tr><th>Question</th><th>What is actually required</th></tr></thead><tbody>' +
+        '<div class="table-wrap"><table><thead><tr><th scope="col">Question</th><th scope="col">What is actually required</th></tr></thead><tbody>' +
           "<tr><td>Which cryptic species of <em>Bemisia tabaci</em>?</td><td>Molecular identification (COI, mtCOI) or isoenzyme analysis.</td></tr>" +
           "<tr><td><em>Tuta absoluta</em> vs <em>Phthorimaea operculella</em>?</td><td>Genitalia dissection or DNA barcoding.</td></tr>" +
           "<tr><td>Which <em>Liriomyza</em> species?</td><td>Adult male genitalia, or rearing plus molecular confirmation.</td></tr>" +
@@ -1858,13 +1860,27 @@
 
     /* scout */
     if (action === "scout-del") {
+      /* Where the reader was, before the row disappears. */
+      const buttons = Array.from(document.querySelectorAll('[data-action="scout-del"]'));
+      const at = buttons.findIndex((b) => b.getAttribute("data-id") === id);
       state.scout = state.scout.filter((r) => r.id !== id);
-      saveScout(); render(); return;
+      saveScout(); render();
+      /* The row and its button are gone. Put focus on the button that took
+         its place - or the last one - so a keyboard reader stays in the
+         table; with no rows left, focus the heading. */
+      const left = document.querySelectorAll('[data-action="scout-del"]');
+      const next = at >= 0 && left.length ? left[Math.min(at, left.length - 1)] : null;
+      if (next) { next.focus(); return; }
+      const h = $("#view").querySelector("h1");
+      if (h) { h.setAttribute("tabindex", "-1"); h.focus(); }
+      return;
     }
     if (action === "scout-clear") {
       if (!state.scout.length) return;
       if (confirm("Delete all scouting records on this device?")) {
         state.scout = []; saveScout(); render();
+        const h = $("#view").querySelector("h1");
+        if (h) { h.setAttribute("tabindex", "-1"); h.focus(); }
       }
       return;
     }
