@@ -112,9 +112,33 @@
     } catch (e) { /* private mode: the session simply does not resume */ }
   }
 
+  /* A scouting record has to survive a hand-edited backup, an older schema or a
+     storage entry written by something else. Each field is coerced to a string
+     and a row without a date, an observation and a numeric count is dropped
+     rather than rendered as "[object Object]" in the table, the chart and the
+     CSV alike - a record with no count would otherwise be averaged as zero. */
+  function cleanScoutRow(r) {
+    if (!r || typeof r !== "object" || Array.isArray(r)) return null;
+    const date = typeof r.date === "string" ? r.date.trim() : "";
+    const pest = typeof r.pest === "string" ? r.pest.trim() : "";
+    const count = Number(r.count);
+    if (!date || !pest || !isFinite(count) || count < 0) return null;
+    return {
+      id: typeof r.id === "string" && r.id ? r.id : "s" + Math.random().toString(36).slice(2, 10),
+      date: date,
+      crop: typeof r.crop === "string" ? r.crop : "",
+      pest: pest,
+      unit: typeof r.unit === "string" ? r.unit : "",
+      count: String(count),
+      notes: typeof r.notes === "string" ? r.notes : ""
+    };
+  }
+
   function loadScout() {
-    try { return JSON.parse(localStorage.getItem(LS_SCOUT)) || []; }
-    catch (e) { return []; }
+    try {
+      const v = JSON.parse(localStorage.getItem(LS_SCOUT));
+      return Array.isArray(v) ? v.map(cleanScoutRow).filter(Boolean) : [];
+    } catch (e) { return []; }
   }
 
   function loadSeq() {
@@ -1508,7 +1532,7 @@
     const shown = list.slice(-14);
     const counts = shown.map((r) => Number(r.count) || 0);
     const maxC = Math.max.apply(null, counts.concat([1]));
-    const labelOf = (l) => cropName(l[0].crop) + " - " + (l[0].pest || "Unnamed observation") +
+    const labelOf = (l) => (cropName(l[0].crop) || "Unrecorded crop") + " - " + (l[0].pest || "Unnamed observation") +
       (l[0].unit ? " - " + l[0].unit : "");
     const label = list.length ? labelOf(list) : "";
     const unit = list.length ? (list[0].unit || "") : "";
@@ -1549,7 +1573,7 @@
       "</tr></thead><tbody>" +
       rows.map((r, i) =>
         "<tr><td class=\"nowrap\">" + esc(r.date) + "</td>" +
-        "<td>" + esc(cropName(r.crop)) + "</td>" +
+        "<td>" + esc(cropName(r.crop) || "—") + "</td>" +
         "<td><strong>" + esc(r.pest || "—") + "</strong></td>" +
         "<td class=\"small muted\">" + esc(r.unit || "—") + "</td>" +
         '<td class="num mono">' + esc(r.count) + "</td>" +
@@ -2287,7 +2311,12 @@
       try {
         const d = JSON.parse(reader.result);
         if (!d || d.app !== "AgroScope") throw new Error("not an AgroScope backup");
-        if (Array.isArray(d.scout)) state.scout = d.scout;
+        let skipped = 0;
+        if (Array.isArray(d.scout)) {
+          const clean = d.scout.map(cleanScoutRow).filter(Boolean);
+          skipped = d.scout.length - clean.length;
+          state.scout = clean;
+        }
         if (Array.isArray(d.sequence)) state.seq = d.sequence.filter((id) => AGRO.cropGuides[id]);
         /* A backup written before the rotation tracker existed has no
            rotation field: leave the current selection alone rather than
@@ -2307,7 +2336,8 @@
         if (Array.isArray(d.scout)) parts.push(plural(state.scout.length, "record", "records"));
         if (Array.isArray(d.sequence)) parts.push(plural(state.seq.length, "crop", "crops") + " planned");
         if (Array.isArray(d.rotation)) parts.push(plural(state.rot.size, "group", "groups") + " tracked");
-        toast(parts.length ? "Restored " + parts.join(", ") + "." : "Backup restored.");
+        toast((parts.length ? "Restored " + parts.join(", ") + "." : "Backup restored.") +
+          (skipped ? " " + plural(skipped, "incomplete record skipped.", "incomplete records skipped.") : ""));
       } catch (err) {
         toast("That file is not a valid AgroScope backup.");
       }
