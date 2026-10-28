@@ -940,6 +940,7 @@
     const head = '<div class="page-head"><div class="grow">' +
         '<div class="eyebrow">Crop agronomy · section 6</div>' +
         "<h1>" + esc(crop ? crop.name : cropId) + (crop ? ' <span class="dh-sci" style="font-size:16px">' + esc(crop.sci) + "</span>" : "") + "</h1>" +
+        (crop && crop.fr ? '<div class="small muted" style="margin-top:-4px">French: ' + esc(crop.fr) + "</div>" : "") +
         '<p class="lede">The agronomic context that decides whether a crop problem is even possible: climate, soil, cultivar, planting date, ' +
         "water and nutrition. Manage these first; a diagnostic list without them is guesswork.</p>" +
       "</div>" +
@@ -1174,8 +1175,9 @@
 
     // A search for a crop name should reach the crop agronomy guide as well as
     // the pest and disease entries, otherwise "Search … or crop" is misleading.
+    // The crops carry their French name too: "Tomate" has to find the guide.
     const guideHits = q ? AGRO.crops.filter((c) => AGRO.cropGuides[c.id] &&
-      (c.name + " " + c.sci).toLowerCase().includes(q)) : [];
+      (c.name + " " + (c.fr || "") + " " + c.sci).toLowerCase().includes(q)) : [];
     const guideStrip = guideHits.length ?
       '<div style="margin-bottom:16px">' +
         '<div class="tiny strong" style="letter-spacing:.1em;text-transform:uppercase;color:var(--green-700);margin-bottom:8px">Crop agronomy guides</div>' +
