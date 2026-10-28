@@ -203,12 +203,32 @@
   }
 
   let toastTimer = null;
-  function toast(msg) {
+  let toastAction = null;
+
+  /* A message for the live region, optionally with one action the reader can
+     take before it disappears (used to undo a deletion). The action is not
+     announced by the status region, so it is a real, reachable button. */
+  function toast(msg, action) {
     const t = $("#toast");
-    t.textContent = msg;
+    const undo = $("#toastUndo");
+    $("#toastMsg").textContent = msg;
+    /* The visible bar comes and goes; the live region never leaves the
+       accessibility tree, so the message is announced when it is long past. */
+    $("#toastLive").textContent = msg;
+    toastAction = action || null;
+    if (action) {
+      undo.textContent = action.label;
+      undo.hidden = false;
+    } else {
+      undo.hidden = true;
+    }
     t.hidden = false;
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => { t.hidden = true; }, 2600);
+    toastTimer = setTimeout(() => {
+      t.hidden = true;
+      undo.hidden = true;
+      toastAction = null;
+    }, action ? 7000 : 2600);
   }
 
   /* ---------------- modal ---------------- */
@@ -1761,6 +1781,14 @@
     const id = el.getAttribute("data-id");
 
     /* navigation-adjacent */
+    if (action === "toast-undo") {
+      const act = toastAction;
+      toastAction = null;
+      clearTimeout(toastTimer);
+      $("#toast").hidden = true;
+      if (act) act.run();
+      return;
+    }
     if (action === "new-scout") { location.hash = "#/scout"; setTimeout(() => { const f = $("#scoutForm"); if (f) f.querySelector("input[name=pest]").focus(); }, 60); return; }
     if (action === "close-modal") { closeModal(); return; }
     if (action === "print") { window.print(); return; }
@@ -1863,6 +1891,8 @@
       /* Where the reader was, before the row disappears. */
       const buttons = Array.from(document.querySelectorAll('[data-action="scout-del"]'));
       const at = buttons.findIndex((b) => b.getAttribute("data-id") === id);
+      const removed = state.scout.find((r) => r.id === id) || null;
+      const removedAt = state.scout.findIndex((r) => r.id === id);
       state.scout = state.scout.filter((r) => r.id !== id);
       saveScout(); render();
       /* The row and its button are gone. Put focus on the button that took
@@ -1870,9 +1900,23 @@
          table; with no rows left, focus the heading. */
       const left = document.querySelectorAll('[data-action="scout-del"]');
       const next = at >= 0 && left.length ? left[Math.min(at, left.length - 1)] : null;
-      if (next) { next.focus(); return; }
-      const h = $("#view").querySelector("h1");
-      if (h) { h.setAttribute("tabindex", "-1"); h.focus(); }
+      if (next) next.focus();
+      else {
+        const h = $("#view").querySelector("h1");
+        if (h) { h.setAttribute("tabindex", "-1"); h.focus(); }
+      }
+      if (removed) {
+        toast("Observation deleted.", { label: "Undo", run: function () {
+          /* Back in its own place, so the CSV and the stored order are exactly
+             what they were before the click. */
+          state.scout.splice(removedAt < 0 ? state.scout.length : removedAt, 0, removed);
+          saveScout(); render();
+          const back = Array.from(document.querySelectorAll('[data-action="scout-del"]'))
+            .find((b) => b.getAttribute("data-id") === removed.id);
+          if (back) back.focus();
+          toast("Observation restored.");
+        } });
+      }
       return;
     }
     if (action === "scout-clear") {

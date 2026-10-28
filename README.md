@@ -39,7 +39,7 @@ When served over HTTP(S) it can be installed as a standalone web app from the br
 | **IPM planner** | Seasonal programme by crop and phenological stage, organised as prevention → monitoring → biological → cultural → chemical. |
 | **Crop rotation** | Build a sequence of crops and check the transitions: same-family back-to-back pairs and pairs sharing the most recorded pests and diseases. Saved per device, with CSV export. |
 | **Resistance rotation** | IRAC / FRAC / HRAC group tracker with selection-pressure risk ratings and rotation rules. The groups marked as applied this season are kept per device, so a reload does not lose the record; a clear action resets them. |
-| **Scouting log** | Field observations stored locally, with a trend chart, CSV export, and a JSON backup/restore that also carries the planned crop sequence and the marked mode-of-action groups. |
+| **Scouting log** | Field observations stored locally, with a trend chart, per-row deletion that can be undone for a few seconds, CSV export, and a JSON backup/restore that also carries the planned crop sequence and the marked mode-of-action groups. |
 | **Degree days** | Accumulates heat units from daily minimum/maximum temperatures using the simple-average method, with pest presets and a cumulative curve. |
 | **Photo & sample protocol** | What to photograph, how to preserve a specimen, and what a photograph genuinely cannot establish. |
 
@@ -185,7 +185,7 @@ Checklist for a new entry:
 
 ## Known limits
 
-- **Storage is per browser and per device.** The scouting log, the planned crop sequence, the current diagnosis assessment and the marked mode-of-action groups are kept in `localStorage` on that device only and are not synchronised. An interrupted assessment resumes where it was left, and **Restart** clears it; the rotation tracker has its own **Clear selection** action. Export the CSV (or a full JSON backup from the scouting log) before clearing browser data. A backup written by an older version has no rotation field and leaves the current selection untouched, and group codes that are no longer in the dataset are dropped on import.
+- **Storage is per browser and per device.** The scouting log, the planned crop sequence, the current diagnosis assessment and the marked mode-of-action groups are kept in `localStorage` on that device only and are not synchronised. An interrupted assessment resumes where it was left, and **Restart** clears it; the rotation tracker has its own **Clear selection** action. A deleted observation can be recovered from the confirmation bar for seven seconds before it is gone for good. Export the CSV (or a full JSON backup from the scouting log) before clearing browser data. A backup written by an older version has no rotation field and leaves the current selection untouched, and group codes that are no longer in the dataset are dropped on import.
 - **No image recognition.** The app is deliberately not a photo classifier; it structures the evidence a photograph must provide.
 - **Thresholds are indicative.** Values are drawn from common extension practice and must be calibrated to local cultivar, market and climate.
 - **Degree days use a simple average.** Non-linear models and upper thresholds are more accurate in extreme heat.
