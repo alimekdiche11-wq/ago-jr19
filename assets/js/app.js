@@ -79,6 +79,7 @@
   const LS_SCOUT = "agroscope.scout.v1";
   const LS_SEQ = "agroscope.sequence.v1";
   const LS_DIAG = "agroscope.diagnosis.v1";
+  const LS_ROT = "agroscope.rotation.v1";
 
   function freshDiag() {
     return { step: 0, crop: null, organ: null, symptoms: [], pattern: null, allSyms: false };
@@ -123,6 +124,25 @@
     } catch (e) { return []; }
   }
 
+  /* The rotation tracker accumulates over a season, so losing it on reload
+     means re-checking every group. It is saved like the scouting log, and the
+     stored keys are validated against the current dataset so a group that is
+     renamed or withdrawn cannot reappear. */
+  function loadRot() {
+    try {
+      const v = JSON.parse(localStorage.getItem(LS_ROT));
+      const valid = new Set(AGRO.moa.map((g) => g.scheme + ":" + g.code));
+      return new Set(Array.isArray(v) ? v.filter((k) => valid.has(k)) : []);
+    } catch (e) { return new Set(); }
+  }
+
+  function saveRot() {
+    try {
+      if (!state.rot.size) localStorage.removeItem(LS_ROT);
+      else localStorage.setItem(LS_ROT, JSON.stringify(Array.from(state.rot)));
+    } catch (e) { /* private mode: the selection does not survive the session */ }
+  }
+
   const state = {
     route: "dashboard",
     param: null,
@@ -131,7 +151,7 @@
     keyTrail: [],
     keyPath: [AGRO.keyStart],
     keyNode: AGRO.keyStart,
-    rot: new Set(),
+    rot: loadRot(),
     scout: loadScout(),
     seq: loadSeq(),
     gdd: null,
@@ -1174,6 +1194,11 @@
       ? { a: "Corrective agronomy", b: "Soil health &amp; biostimulants", c: "Physical measures", d: "Diagnostics &amp; monitoring" }
       : { a: "Cultural", b: "Biological", c: "Mechanical / physical", d: "Biotechnical" };
 
+    const share = /^https?:$/.test(location.protocol)
+      ? '<button class="btn btn-sm" data-action="copy-pest-link" data-id="' + esc(p.id) + '">' +
+        icon("link") + "Copy link</button>"
+      : "";
+
     return '<div class="detail-head">' +
         '<div class="row-tight" style="margin-bottom:8px">' + kindPill(p) +
           (p.quarantine ? '<span class="pill pill-red">Quarantine / reportable</span>' : "") +
@@ -1224,6 +1249,7 @@
       '<hr class="sep">' +
       '<div class="row"><span class="tiny muted">Reference entry ' + esc(p.id) + " · dataset " + AGRO.meta.revision + "</span>" +
         '<span class="spacer"></span>' +
+        share +
         '<button class="btn btn-sm" data-action="print">' + icon("print") + "Print</button></div>";
   }
 
@@ -1417,6 +1443,8 @@
           "</ul>" +
           '<div class="small strong" style="margin-bottom:6px">Selected this season</div>' +
           advice +
+          (chosen.length ? '<button class="btn btn-sm btn-ghost" data-action="rot-clear" style="margin-top:10px">' +
+            icon("rotate") + "Clear selection</button>" : "") +
         "</div>" +
       "</div>" +
       '<div class="callout red" style="margin-top:16px"><strong>Legal control.</strong> ' +
@@ -1774,6 +1802,23 @@
       return;
     }
     if (action === "open-crop") { closeModal(); location.hash = "#/crops/" + id; return; }
+    if (action === "copy-pest-link") {
+      const base = /^https?:$/.test(location.protocol)
+        ? location.origin + location.pathname
+        : location.href.split("#")[0];
+      copyText(base + "#/library/" + encodeURIComponent(id), "Profile link copied.");
+      return;
+    }
+    if (action === "rot-clear") {
+      if (confirm("Clear the tracked mode-of-action groups?")) {
+        state.rot.clear(); saveRot(); render();
+        /* The button that was pressed is gone; return focus to the view
+           heading rather than to the body. */
+        const h = $("#view").querySelector("h1");
+        if (h) { h.setAttribute("tabindex", "-1"); h.focus(); }
+      }
+      return;
+    }
 
     /* key */
     if (action === "key-opt") {
@@ -1841,7 +1886,13 @@
     if (action === "rot-toggle") {
       const key = el.getAttribute("data-key");
       if (el.checked) state.rot.add(key); else state.rot.delete(key);
+      saveRot();
       render();
+      /* The list is rebuilt, so the switch that was just used no longer
+         exists; put focus back on its replacement instead of dropping the
+         keyboard reader at the top of the document. */
+      const again = document.querySelector('input[data-action="rot-toggle"][data-key="' + key + '"]');
+      if (again) again.focus();
       return;
     }
     if (action === "gdd-preset") {
