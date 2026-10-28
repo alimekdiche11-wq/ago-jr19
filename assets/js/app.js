@@ -47,6 +47,15 @@
      places and a wrong plural reads like a bug. */
   const plural = (n, one, many) => n + " " + (n === 1 ? one : many);
 
+  /* The calendar date where the reader is, not at Greenwich. toISOString()
+     would date a 00:30 entry, a printed sheet and an exported file as
+     yesterday for every time zone east of UTC. */
+  function isoDate(d) {
+    const t = d || new Date();
+    const pad = (n) => (n < 10 ? "0" : "") + n;
+    return t.getFullYear() + "-" + pad(t.getMonth() + 1) + "-" + pad(t.getDate());
+  }
+
   const cropOf = (id) => AGRO.crops.find((c) => c.id === id);
   const cropName = (id) => (cropOf(id) ? cropOf(id).name : id);
   const symLabel = (id) => {
@@ -753,7 +762,7 @@
         /* Printed only: a sheet taken to the field should carry its own
            provenance, so anyone reading it can reopen the exact answers. */
         '<div class="print-only" style="margin-top:18px;border-top:1px solid var(--line);padding-top:8px">' +
-          '<div class="tiny">AgroScope — differential diagnosis assessment, printed ' + new Date().toISOString().slice(0, 10) +
+          '<div class="tiny">AgroScope — differential diagnosis assessment, printed ' + isoDate() +
             ". Scores express fit to the observed characters, not the probability that a diagnosis is correct. " +
             "Any pesticide application is governed by the national label.</div>" +
           '<div class="tiny" style="margin-top:4px">Answers: ' + esc(diagShareUrl()) + "</div>" +
@@ -1593,7 +1602,7 @@
         '<div class="eyebrow">Field records</div>' +
         "<h1>Scouting log</h1>" +
         '<p class="lede no-print">Observations are stored in this browser only. Export the CSV at the end of each week — it is your evidence base for thresholds and for what actually worked.</p>' +
-        '<p class="lede print-only">Printed ' + new Date().toISOString().slice(0, 10) + ' &middot; ' +
+        '<p class="lede print-only">Printed ' + isoDate() + ' &middot; ' +
           plural(state.scout.length, "record", "records") + '. Counts are only comparable within one crop, observation and unit.</p>' +
       "</div>" +
       '<div class="page-actions">' +
@@ -1606,7 +1615,7 @@
           '<form id="scoutForm" autocomplete="off">' +
             '<div class="grid g3" style="gap:12px">' +
               '<label class="field"><span>Date</span><input type="date" name="date" required value="' +
-                esc(draft.date || new Date().toISOString().slice(0, 10)) + '"></label>' +
+                esc(draft.date || isoDate()) + '"></label>' +
               '<label class="field"><span>Crop</span><select name="crop">' + crops + "</select></label>" +
               '<label class="field"><span>Count</span><input type="number" name="count" min="0" step="0.1" required placeholder="0" value="' +
                 esc(draft.count || "") + '"></label>' +
@@ -2204,7 +2213,7 @@
     const blob = new Blob(["\ufeff" + lines.join("\r\n")], { type: "text/csv;charset=utf-8;" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = "agroscope-scouting-" + new Date().toISOString().slice(0, 10) + ".csv";
+    a.download = "agroscope-scouting-" + isoDate() + ".csv";
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
     toast("CSV exported.");
@@ -2259,7 +2268,7 @@
   function exportDiag() {
     if (!diagnose().length) { toast("Nothing to export — no candidate matched."); return; }
     downloadBlob(new Blob([diagCsvText()], { type: "text/csv;charset=utf-8;" }),
-      "agroscope-assessment-" + new Date().toISOString().slice(0, 10) + ".csv");
+      "agroscope-assessment-" + isoDate() + ".csv");
     toast("Assessment CSV exported.");
   }
 
@@ -2295,7 +2304,7 @@
       rotation: Array.from(state.rot)
     };
     downloadBlob(new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" }),
-      "agroscope-backup-" + new Date().toISOString().slice(0, 10) + ".json");
+      "agroscope-backup-" + isoDate() + ".json");
     toast("Backup file saved.");
   }
 
@@ -2311,7 +2320,7 @@
         .map(csvCell).join(","));
     });
     downloadBlob(new Blob(["\ufeff" + lines.join("\r\n")], { type: "text/csv;charset=utf-8;" }),
-      "agroscope-rotation-" + new Date().toISOString().slice(0, 10) + ".csv");
+      "agroscope-rotation-" + isoDate() + ".csv");
     toast("Rotation CSV exported.");
   }
 
@@ -2417,7 +2426,7 @@
     const raw = temps.map((t, i) => {
       const d = new Date(start);
       d.setDate(start.getDate() + i);
-      return d.toISOString().slice(0, 10) + ", " + t[0] + ", " + t[1];
+      return isoDate(d) + ", " + t[0] + ", " + t[1];
     }).join("\n");
     $("#gddBase").value = base;
     $("#gddData").value = raw;

@@ -13,7 +13,7 @@
  */
 "use strict";
 
-const CACHE = "agroscope-v58";
+const CACHE = "agroscope-v59";
 
 const SHELL = [
   "./",
@@ -23,15 +23,15 @@ const SHELL = [
   "./assets/icon-192.png",
   "./assets/icon-512.png",
   "./assets/icon-maskable-512.png",
-  "./assets/css/app.css?v=58",
-  "./assets/js/data-core.js?v=58",
-  "./assets/js/data-pests.js?v=58",
-  "./assets/js/data-pests-2.js?v=58",
-  "./assets/js/data-diseases.js?v=58",
-  "./assets/js/data-disorders.js?v=58",
-  "./assets/js/data-guides.js?v=58",
-  "./assets/js/data-ipm.js?v=58",
-  "./assets/js/app.js?v=58",
+  "./assets/css/app.css?v=59",
+  "./assets/js/data-core.js?v=59",
+  "./assets/js/data-pests.js?v=59",
+  "./assets/js/data-pests-2.js?v=59",
+  "./assets/js/data-diseases.js?v=59",
+  "./assets/js/data-disorders.js?v=59",
+  "./assets/js/data-guides.js?v=59",
+  "./assets/js/data-ipm.js?v=59",
+  "./assets/js/app.js?v=59",
 ];
 
 self.addEventListener("install", function (event) {
