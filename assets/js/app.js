@@ -153,6 +153,9 @@
     keyNode: AGRO.keyStart,
     rot: loadRot(),
     scout: loadScout(),
+    /* Which observation + unit the scouting trend is showing; null means the
+       most recently recorded series. Not persisted: it follows the data. */
+    scoutSeries: null,
     seq: loadSeq(),
     gdd: null,
     cropGuide: null,
@@ -1482,13 +1485,56 @@
 
   function viewScout() {
     const rows = state.scout.slice().sort((a, b) => (a.date < b.date ? 1 : -1));
-    const counts = rows.slice(0, 14).reverse().map((r) => Number(r.count) || 0);
+
+    /* Counts are only comparable inside one crop, observation and unit: 4
+       larvae per plant and 4 adults per trap per week measure different
+       things, and thresholds are crop-specific. One series per crop +
+       observation + unit, most recently recorded first. */
+    const series = new Map();
+    state.scout.forEach((r) => {
+      const k = (r.crop || "") + "|" + (r.pest || "Unnamed observation") + "|" + (r.unit || "");
+      if (!series.has(k)) series.set(k, []);
+      series.get(k).push(r);
+    });
+    series.forEach((list) => list.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0)));
+    const lastDate = (k) => series.get(k)[series.get(k).length - 1].date;
+    const keys = Array.from(series.keys()).sort((a, b) => (lastDate(a) < lastDate(b) ? 1 : lastDate(a) > lastDate(b) ? -1 : 0));
+    const chosen = keys.indexOf(state.scoutSeries) >= 0 ? state.scoutSeries : keys[0];
+    const list = chosen ? series.get(chosen) : [];
+    const shown = list.slice(-14);
+    const counts = shown.map((r) => Number(r.count) || 0);
     const maxC = Math.max.apply(null, counts.concat([1]));
+    const labelOf = (l) => cropName(l[0].crop) + " - " + (l[0].pest || "Unnamed observation") +
+      (l[0].unit ? " - " + l[0].unit : "");
+    const label = list.length ? labelOf(list) : "";
+    const unit = list.length ? (list[0].unit || "") : "";
+    const mean = shown.length ? shown.reduce((s, r) => s + (Number(r.count) || 0), 0) / shown.length : 0;
+
+    const picker = keys.length > 1 ?
+      '<label class="field" style="margin:0 0 6px"><span>Series</span>' +
+        '<select data-action="scout-series" aria-label="Crop, observation and unit to chart">' +
+          keys.map((k) => {
+            const l = series.get(k);
+            return '<option value="' + esc(k) + '"' + (k === chosen ? " selected" : "") + ">" +
+              esc(labelOf(l)) + " (" + l.length + ")</option>";
+          }).join("") +
+        "</select></label>" :
+      '<div class="small strong">' + esc(label) + "</div>";
 
     const chart = counts.length ?
+      picker +
       '<div class="bars" style="height:72px;margin-top:8px">' +
-        counts.map((c) => '<div class="b" style="height:' + Math.max(4, Math.round((c / maxC) * 100)) + '%" title="' + c + '"></div>').join("") +
-      "</div>" : "";
+        counts.map((c, i) => '<div class="b" style="height:' + Math.max(4, Math.round((c / maxC) * 100)) +
+          '%" title="' + esc(shown[i].date + ": " + c + (unit ? " " + unit : "")) + '"></div>').join("") +
+      "</div>" +
+      '<div class="small muted" style="margin-top:6px">' +
+        (list.length > shown.length ? "Last " + shown.length + " of " + plural(list.length, "record", "records") : plural(shown.length, "record", "records")) +
+        " &middot; " + esc(shown[0].date) + " to " + esc(shown[shown.length - 1].date) +
+        " &middot; mean <strong>" + mean.toFixed(1) + "</strong>" + (unit ? " " + esc(unit) : "") + "</div>" +
+      /* The bars are visual only; the same reading is available as a sentence. */
+      '<p class="sr-only">' + esc(label) + ": " + plural(shown.length, "record", "records") +
+        " from " + esc(shown[0].date) + " to " + esc(shown[shown.length - 1].date) +
+        ", mean " + mean.toFixed(1) + ", latest " + counts[counts.length - 1] + ".</p>" : "";
 
     const table = rows.length ?
       '<div class="table-wrap"><table><thead><tr>' +
@@ -1540,11 +1586,11 @@
         "</div>" +
 
         '<div class="stack">' +
-          '<div class="card"><div class="card-head"><h2>Last 14 counts</h2></div>' +
+          '<div class="card"><div class="card-head"><h2>Trend by observation</h2></div>' +
             (chart || '<p class="small muted">No data yet.</p>') +
             '<hr class="sep" style="margin:14px 0">' +
-            '<div class="small muted">Records: <strong>' + state.scout.length + "</strong><br>Mean count: <strong>" +
-              (state.scout.length ? (state.scout.reduce((s, r) => s + (Number(r.count) || 0), 0) / state.scout.length).toFixed(1) : "—") + "</strong></div>" +
+            '<div class="small muted">Records: <strong>' + state.scout.length + "</strong>" +
+              (keys.length > 1 ? "<br>Separate series: <strong>" + keys.length + "</strong>" : "") + "</div>" +
           "</div>" +
           '<div class="card"><div class="card-head"><h2>Backup &amp; restore</h2></div>' +
             '<p class="small" style="color:var(--ink-700)">Your records, the planned rotation and the marked mode-of-action groups live only in this browser. Keep a JSON backup to move them to another device or to survive a cleared cache.</p>' +
@@ -1942,6 +1988,15 @@
     const action = el.getAttribute("data-action");
 
     if (action === "lib-crop") { state.lib.crop = el.value; render(); return; }
+    if (action === "scout-series") {
+      state.scoutSeries = el.value;
+      render();
+      /* render() rebuilds the select; keep focus on it so a keyboard reader
+         can step through the series without tabbing back. */
+      const again = document.querySelector('[data-action="scout-series"]');
+      if (again) again.focus();
+      return;
+    }
     if (action === "import-file") {
       if (el.files && el.files[0]) { importAll(el.files[0]); el.value = ""; }
       return;
