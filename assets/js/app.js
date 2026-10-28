@@ -2188,7 +2188,12 @@
   function exportScout() {
     if (!state.scout.length) { toast("Nothing to export yet."); return; }
     const head = ["date", "crop", "observation", "unit", "count", "notes"];
-    const lines = [head.map(csvCell).join(",")].concat(state.scout.map((r) =>
+    /* The table reads newest first, but a file is read as a series: an older
+       visit typed up late must not land below a newer one, or a chart of the
+       column runs backwards. Chronological order, oldest first. */
+    const ordered = state.scout.slice().sort((a, b) =>
+      a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+    const lines = [head.map(csvCell).join(",")].concat(ordered.map((r) =>
       [r.date, cropName(r.crop), r.pest, r.unit, r.count, r.notes]
         .map(csvCell).join(",")));
     const blob = new Blob(["\ufeff" + lines.join("\r\n")], { type: "text/csv;charset=utf-8;" });
