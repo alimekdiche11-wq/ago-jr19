@@ -221,6 +221,10 @@
     if ($("#modal").hidden) lastFocused = document.activeElement;
     $("#modalBody").innerHTML = html;
     $("#modal").hidden = false;
+    /* Print styles use this to drop the page behind the dialog: printing an
+       open profile must yield the profile, not the listing it was opened
+       from. */
+    document.documentElement.classList.add("modal-open");
     document.body.style.overflow = "hidden";
     /* A pest profile is what the reader is looking at, whatever route opened
        it, so it names the tab while the dialog stays open. */
@@ -236,6 +240,7 @@
     const pestId = state.modalPest;
     $("#modal").hidden = true;
     $("#modalBody").innerHTML = "";
+    document.documentElement.classList.remove("modal-open");
     document.body.style.overflow = "";
     state.modalPest = null;
 

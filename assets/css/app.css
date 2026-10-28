@@ -697,12 +697,23 @@ button:focus-visible,
 @media print {
   .sidebar, .topbar, .foot, .modal-x, .modal-backdrop { display: none !important; }
   .page-actions, .toolbar, .skip-link, .btn { display: none !important; }
+  /* An open profile is printed on its own. The listing underneath is what the
+     reader has just left, and carrying it onto the paper would bury the
+     profile under several pages that are not the document. */
+  html.modal-open body > :not(#modal) { display: none !important; }
   .view { max-width: none; padding: 0; }
   .card { break-inside: avoid; }
   .result { break-inside: avoid; box-shadow: none; }
   .transition { break-inside: avoid; }
   .modal { position: static; padding: 0; display: block; }
-  .modal-card { position: static; max-height: none; box-shadow: none; border-radius: 0; padding: 0; width: 100%; }
+  /* The dialog slides in with an opacity animation; paged output freezes it at
+     its first frame, which would print an invisible profile. */
+  .modal-card {
+    position: static; max-height: none; box-shadow: none; border-radius: 0; padding: 0; width: 100%;
+    animation: none; opacity: 1; transform: none;
+  }
+  /* the 40px kept for the close button is dead space once that button is gone */
+  html.modal-open .detail-head { padding-right: 0; }
   body { background: #fff; }
 }
 
