@@ -196,7 +196,13 @@
     seq: loadSeq(),
     gdd: null,
     cropGuide: null,
-    modalPest: null
+    modalPest: null,
+    /* The page a profile was opened from, so closing it returns there. Null
+       for a profile reached by a deep link or from the library listing. */
+    modalFrom: null,
+    /* Set when returning to a page whose address carries answers, so the link
+       is not re-applied over what the reader has since answered. */
+    skipHydrate: false
   };
 
   function saveSeq() {
@@ -306,15 +312,28 @@
 
     /* A profile opened from a deep link (#/library/<id>) would be opened again
        by the next render for as long as that id stays in the address. Closing
-       therefore returns the address to the plain library, replacing the history
-       entry so that Back does not reopen what was just dismissed. */
+       therefore returns the address to the page the profile was opened from -
+       the diagnosis the reader was in the middle of, say - and only falls back
+       to the plain library for a profile reached by a link. The history entry
+       is replaced so that Back does not reopen what was just dismissed. */
     const r = parseHash();
     if (r.route === "library" && r.param && pestById(r.param)) {
-      try { history.replaceState(null, "", "#/library"); }
-      catch (e) { location.hash = "#/library"; }
-      const after = parseHash();
-      state.param = after.param;
-      state.sub = after.sub;
+      const back = state.modalFrom;
+      state.modalFrom = null;
+      try { history.replaceState(null, "", back || "#/library"); }
+      catch (e) { location.hash = back || "#/library"; }
+      if (back) {
+        /* replaceState fires no hashchange, and the page behind the dialog is
+           still the library: re-render the page we are returning to. */
+        state.skipHydrate = true;
+        render();
+      } else {
+        const after = parseHash();
+        state.param = after.param;
+        state.sub = after.sub;
+      }
+    } else {
+      state.modalFrom = null;
     }
     document.title = routeTitle();
 
@@ -454,7 +473,7 @@
        and undo what the user just changed. */
     if (r.route === "diagnose") {
       const shareKey = "diagnose?" + r.params.toString();
-      if (r.params.has("crop") && state._diagShareKey !== shareKey) {
+      if (r.params.has("crop") && !state.skipHydrate && state._diagShareKey !== shareKey) {
         /* The link is authoritative: apply it if it is valid, and start from
            scratch if it names a crop this build does not know, so a stale
            link never lands the reader in an unrelated saved assessment. */
@@ -462,9 +481,11 @@
         else state.diag = freshDiag();
         state._diagResumed = false;
       }
+      state.skipHydrate = false;
       state._diagShareKey = shareKey;
     } else {
       state._diagShareKey = null;
+      state.skipHydrate = false;
     }
 
     const views = {
@@ -1957,7 +1978,13 @@
       const p = pestById(id);
       if (!p) return;
       /* Put the profile in the address, exactly as a received link carries it,
-         so any opened profile can be bookmarked, reloaded or sent on. */
+         so any opened profile can be bookmarked, reloaded or sent on. Remember
+         the page it was opened from: a candidate opened from the diagnosis
+         results must not leave the reader in the library when it is closed.
+         A profile opened from inside another profile keeps that origin. */
+      const here = parseHash();
+      if (here.route !== "library") state.modalFrom = location.hash || "#/dashboard";
+      else if ($("#modal").hidden) state.modalFrom = null;
       const target = "#/library/" + encodeURIComponent(p.id);
       if (location.hash === target) openModal(pestDetail(p), p);
       else location.hash = target;
