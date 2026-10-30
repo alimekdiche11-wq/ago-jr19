@@ -506,6 +506,16 @@
     const fn = views[state.route] || viewDashboard;
     const routeChanged = state._rendered !== state.route;
     const focusInView = $("#view").contains(document.activeElement);
+    /* A filter, a series selector or a switch inside the view is rebuilt with
+       the view. Without this the control the reader just used disappears and
+       focus falls to the top of the document: filtering the library by kind
+       and then by crop means tabbing from the beginning twice. The control is
+       identified by the attributes that survive the rebuild. */
+    const focusSig = focusInView && document.activeElement !== document.body ? {
+      action: document.activeElement.getAttribute("data-action"),
+      key: document.activeElement.getAttribute("data-key"),
+      id: document.activeElement.getAttribute("data-id")
+    } : null;
     document.title = routeTitle();
     renderNav();
     $("#view").innerHTML = fn();
@@ -515,6 +525,19 @@
        still up; close it so the visible screen matches the URL. */
     if (state.modalPest && !(state.route === "library" && state.param === state.modalPest)) {
       closeModal();
+    }
+
+    /* Only when that identity is unique: a bare action name would land the
+       reader on the first of thirty switches. */
+    if (focusSig && focusSig.action) {
+      const again = Array.prototype.filter.call(
+        $("#view").querySelectorAll("[data-action]"),
+        function (el) {
+          return el.getAttribute("data-action") === focusSig.action &&
+            el.getAttribute("data-key") === focusSig.key &&
+            el.getAttribute("data-id") === focusSig.id;
+        });
+      if (again.length === 1) again[0].focus();
     }
 
     const active = $('.nav a[href="#/' + state.route + '"]');
@@ -663,7 +686,8 @@
     state._diagResumed = false;
 
     const stepper = '<div class="steps">' + steps.map((s, i) =>
-      '<div class="step ' + (i === d.step ? "on" : i < d.step ? "done" : "") + '">' +
+      '<div class="step ' + (i === d.step ? "on" : i < d.step ? "done" : "") + '"' +
+      (i === d.step ? ' aria-current="step"' : "") + ">" +
       '<span class="num">' + (i < d.step ? "✓" : i + 1) + "</span>" + s + "</div>").join("") + "</div>";
 
     let body = "";
@@ -673,7 +697,7 @@
         '<h2 style="margin-bottom:6px">Select the crop</h2>' +
         '<p class="small muted" style="margin-bottom:16px">The candidate list is restricted to organisms recorded on this crop.</p>' +
         '<div class="opt-grid">' + AGRO.crops.map((c) =>
-          '<button class="opt ' + (d.crop === c.id ? "on" : "") + '" data-action="diag-crop" data-id="' + c.id + '">' +
+          '<button class="opt ' + (d.crop === c.id ? "on" : "") + '" aria-pressed="' + (d.crop === c.id ? "true" : "false") + '" data-action="diag-crop" data-id="' + c.id + '">' +
           '<span class="o-t">' + esc(c.name) + "</span>" +
           '<span class="o-s">' + esc(c.sci) + "</span></button>").join("") + "</div></div>";
     }
@@ -683,7 +707,7 @@
         '<h2 style="margin-bottom:6px">Where is the problem?</h2>' +
         '<p class="small muted" style="margin-bottom:16px">Choose the organ carrying the most informative symptoms.</p>' +
         '<div class="opt-grid">' + AGRO.organs.map((o) =>
-          '<button class="opt ' + (d.organ === o.id ? "on" : "") + '" data-action="diag-organ" data-id="' + o.id + '">' +
+          '<button class="opt ' + (d.organ === o.id ? "on" : "") + '" aria-pressed="' + (d.organ === o.id ? "true" : "false") + '" data-action="diag-organ" data-id="' + o.id + '">' +
           '<span class="o-t">' + o.label + "</span>" +
           '<span class="o-s">' + o.hint + "</span></button>").join("") + "</div>" +
         '<div class="row" style="margin-top:18px"><button class="btn" data-action="diag-back">' + icon("back") + "Back</button></div></div>";
@@ -700,7 +724,7 @@
           '<span class="tiny muted">' + (d.allSyms ? "All symptom groups displayed" : "Filtered to: " + esc((AGRO.organs.find((o) => o.id === d.organ) || {}).short || "")) + "</span>" +
         "</div>" +
         '<div class="opt-grid">' + list.map((s) =>
-          '<button class="opt ' + (d.symptoms.includes(s.id) ? "on" : "") + '" data-action="diag-symptom" data-id="' + s.id + '">' +
+          '<button class="opt ' + (d.symptoms.includes(s.id) ? "on" : "") + '" aria-pressed="' + (d.symptoms.includes(s.id) ? "true" : "false") + '" data-action="diag-symptom" data-id="' + s.id + '">' +
           '<span class="o-t">' + esc(s.label) + "</span>" +
           (d.allSyms ? '<span class="o-s">' + esc(s.group) + "</span>" : "") + "</button>").join("") + "</div>" +
         (list.length === 0 ? '<p class="small muted">No symptom set for this organ; go back and choose another.</p>' : "") +
@@ -716,7 +740,7 @@
         '<h2 style="margin-bottom:6px">Distribution in the field</h2>' +
         '<p class="small muted" style="margin-bottom:16px">Useful context, and shown alongside the result as an interpretive note.</p>' +
         '<div class="opt-grid">' + AGRO.patterns.map((p) =>
-          '<button class="opt ' + (d.pattern === p.id ? "on" : "") + '" data-action="diag-pattern" data-id="' + p.id + '">' +
+          '<button class="opt ' + (d.pattern === p.id ? "on" : "") + '" aria-pressed="' + (d.pattern === p.id ? "true" : "false") + '" data-action="diag-pattern" data-id="' + p.id + '">' +
           '<span class="o-t">' + esc(p.label) + "</span>" +
           '<span class="o-s">' + esc(p.hint) + "</span></button>").join("") + "</div>" +
         '<div class="row" style="margin-top:18px">' +
@@ -1049,6 +1073,20 @@
     return c && c.family && c.family !== "—" ? c.family : null;
   }
 
+  /* A move or a removal rebuilds the list, so the button that was pressed is
+     gone or now belongs to another season. Put focus on the control that
+     carries the season the reader was acting on, rather than dropping a
+     keyboard user back at the top of the page mid-reorder. */
+  function focusSeqControl(i, pref) {
+    const at = (action, index) => $('#view [data-action="' + action + '"][data-index="' + index + '"]');
+    let el = i >= 0 ? at(pref, i) : null;
+    /* The moved season may now be first or last, where that arrow is disabled. */
+    if (el && el.disabled) el = at(pref === "seq-up" ? "seq-down" : "seq-up", i);
+    if (!el && i >= 0) el = at("seq-remove", i);
+    if (!el) el = $('#view [data-action="seq-add"]');
+    if (el) el.focus();
+  }
+
   function viewSequence() {
     const seq = state.seq;
     const options = AGRO.crops.filter((c) => AGRO.cropGuides[c.id]);
@@ -1081,17 +1119,21 @@
         '<p class="small">Add a first crop above. Three to five seasons is usually enough to expose the main conflicts.</p></div>';
     }
 
-    const chips = seq.map((id, i) =>
-      '<div class="seq-chip">' +
+    const chips = seq.map((id, i) => {
+      /* A row of identical "Move earlier" buttons tells a screen-reader user
+         nothing about which season moves; the label names it. */
+      const at = " (season " + (i + 1) + ")";
+      return '<div class="seq-chip">' +
         '<span class="seq-n">' + (i + 1) + "</span>" +
         '<span class="seq-name">' + esc(cropName(id)) +
           (familyOf(id) ? '<span class="tiny muted"> · ' + esc(familyOf(id)) + "</span>" : "") +
         "</span>" +
         '<span class="spacer"></span>' +
-        '<button class="icon-btn" data-action="seq-up" data-index="' + i + '" aria-label="Move earlier"' + (i === 0 ? " disabled" : "") + ">" + icon("back") + "</button>" +
-        '<button class="icon-btn" data-action="seq-down" data-index="' + i + '" aria-label="Move later"' + (i === seq.length - 1 ? " disabled" : "") + ">" + icon("arrow") + "</button>" +
-        '<button class="icon-btn" data-action="seq-remove" data-index="' + i + '" aria-label="Remove this season">' + icon("trash") + "</button>" +
-      "</div>").join("");
+        '<button class="icon-btn" data-action="seq-up" data-index="' + i + '" aria-label="' + esc("Move " + cropName(id) + " earlier" + at) + '"' + (i === 0 ? " disabled" : "") + ">" + icon("back") + "</button>" +
+        '<button class="icon-btn" data-action="seq-down" data-index="' + i + '" aria-label="' + esc("Move " + cropName(id) + " later" + at) + '"' + (i === seq.length - 1 ? " disabled" : "") + ">" + icon("arrow") + "</button>" +
+        '<button class="icon-btn" data-action="seq-remove" data-index="' + i + '" aria-label="' + esc("Remove " + cropName(id) + " from the sequence" + at) + '">' + icon("trash") + "</button>" +
+      "</div>";
+    }).join("");
 
     const timeline = '<div class="card pad-lg">' +
         '<div class="card-head"><h2>Sequence</h2><span class="spacer"></span>' +
@@ -1220,7 +1262,7 @@
 
       '<div class="toolbar">' +
         '<div class="seg">' + kinds.map((k) =>
-          '<button data-action="lib-kind" data-id="' + k[0] + '" class="' + (f.kind === k[0] ? "on" : "") + '">' + k[1] + "</button>").join("") + "</div>" +
+          '<button data-action="lib-kind" data-id="' + k[0] + '" aria-pressed="' + (f.kind === k[0] ? "true" : "false") + '" class="' + (f.kind === k[0] ? "on" : "") + '">' + k[1] + "</button>").join("") + "</div>" +
         '<select data-action="lib-crop" aria-label="Filter by crop">' +
           '<option value="all">All crops</option>' +
           AGRO.crops.map((c) => '<option value="' + c.id + '"' + (f.crop === c.id ? " selected" : "") + ">" + esc(c.name) + "</option>").join("") +
@@ -1960,15 +2002,46 @@
     if (action === "diag-run") { state.diag.step = 4; render(); return; }
     if (action === "diag-reset") { state.diag = freshDiag(); state._diagResumed = false; render(); return; }
 
-    /* crop rotation planner */
+    /* crop rotation planner
+       These three buttons act on a season, and the season is named by its
+       position in the list - data-index, not data-id. Reading data-id gave
+       every row the same null, so a click on the third season's bin removed
+       the first season and "move earlier" worked only for the top row. */
+    const seqIndex = () => {
+      const v = parseInt(el.getAttribute("data-index"), 10);
+      return isNaN(v) ? -1 : v;
+    };
     if (action === "seq-add") {
       const sel = $("#seqCrop");
       if (sel && sel.value) { state.seq.push(sel.value); saveSeq(); render(); }
       return;
     }
-    if (action === "seq-remove") { const i = +id; if (i >= 0) { state.seq.splice(i, 1); saveSeq(); render(); } return; }
-    if (action === "seq-up") { const i = +id; if (i > 0) { const t = state.seq[i - 1]; state.seq[i - 1] = state.seq[i]; state.seq[i] = t; saveSeq(); render(); } return; }
-    if (action === "seq-down") { const i = +id; if (i < state.seq.length - 1) { const t = state.seq[i + 1]; state.seq[i + 1] = state.seq[i]; state.seq[i] = t; saveSeq(); render(); } return; }
+    if (action === "seq-remove") {
+      const i = seqIndex();
+      if (i >= 0 && i < state.seq.length) {
+        state.seq.splice(i, 1); saveSeq(); render();
+        focusSeqControl(Math.min(i, state.seq.length - 1), "seq-remove");
+      }
+      return;
+    }
+    if (action === "seq-up") {
+      const i = seqIndex();
+      if (i > 0 && i < state.seq.length) {
+        const t = state.seq[i - 1]; state.seq[i - 1] = state.seq[i]; state.seq[i] = t;
+        saveSeq(); render();
+        focusSeqControl(i - 1, "seq-up");
+      }
+      return;
+    }
+    if (action === "seq-down") {
+      const i = seqIndex();
+      if (i >= 0 && i < state.seq.length - 1) {
+        const t = state.seq[i + 1]; state.seq[i + 1] = state.seq[i]; state.seq[i] = t;
+        saveSeq(); render();
+        focusSeqControl(i + 1, "seq-down");
+      }
+      return;
+    }
     if (action === "seq-clear") { if (confirm("Clear the planned sequence?")) { state.seq = []; saveSeq(); render(); } return; }
     if (action === "seq-export") { exportSeq(); return; }
 
@@ -2116,11 +2189,6 @@
       if (el.checked) state.rot.add(key); else state.rot.delete(key);
       saveRot();
       render();
-      /* The list is rebuilt, so the switch that was just used no longer
-         exists; put focus back on its replacement instead of dropping the
-         keyboard reader at the top of the document. */
-      const again = document.querySelector('input[data-action="rot-toggle"][data-key="' + key + '"]');
-      if (again) again.focus();
       return;
     }
     if (action === "gdd-preset") {

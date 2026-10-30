@@ -709,7 +709,8 @@ button:focus-visible,
 
 @media print {
   .sidebar, .topbar, .foot, .modal-x, .modal-backdrop, .toast { display: none !important; }
-  .page-actions, .toolbar, .skip-link, .btn { display: none !important; }
+  /* Row controls - move up, move down, remove - have no meaning on paper. */
+  .page-actions, .toolbar, .skip-link, .btn, .icon-btn { display: none !important; }
   /* A printed log is the evidence, not the data-entry screen: the observation
      form and the backup card have no meaning on paper. */
   .no-print { display: none !important; }
