@@ -1707,7 +1707,7 @@
               (keys.length > 1 ? "<br>Separate series: <strong>" + keys.length + "</strong>" : "") + "</div>" +
           "</div>" +
           '<div class="card no-print"><div class="card-head"><h2>Backup &amp; restore</h2></div>' +
-            '<p class="small" style="color:var(--ink-700)">Your records, the planned rotation and the marked mode-of-action groups live only in this browser. Keep a JSON backup to move them to another device or to survive a cleared cache.</p>' +
+            '<p class="small" style="color:var(--ink-700)">Your records, the planned rotation and the marked mode-of-action groups live only in this browser. Keep a JSON backup to move them to another device or to survive a cleared cache; restoring one replaces what is on this device.</p>' +
             '<div class="stack" style="gap:8px;margin-top:8px">' +
               '<button class="btn btn-sm" data-action="backup-all">' + icon("download") + "Back up all data</button>" +
               '<label class="btn btn-sm" style="cursor:pointer;justify-content:center">' + icon("plus") + "Restore from backup" +
@@ -2436,6 +2436,19 @@
       try {
         const d = JSON.parse(reader.result);
         if (!d || d.app !== "AgroScope") throw new Error("not an AgroScope backup");
+        /* Restoring replaces rather than merges, so on a device that already
+           holds a season of records it is a destructive act: say what would be
+           replaced before it happens, and leave everything alone if the reader
+           picked the wrong file. An empty device has nothing to lose and is
+           not asked. */
+        const held = state.scout.length + state.seq.length + state.rot.size;
+        if (held && !confirm("Restoring this backup replaces what is on this device: " +
+            plural(state.scout.length, "observation", "observations") + ", " +
+            plural(state.seq.length, "planned season", "planned seasons") + ", " +
+            plural(state.rot.size, "tracked group", "tracked groups") + ". Continue?")) {
+          toast("Restore cancelled. Nothing on this device was changed.");
+          return;
+        }
         let skipped = 0;
         if (Array.isArray(d.scout)) {
           const clean = d.scout.map(cleanScoutRow).filter(Boolean);
