@@ -954,18 +954,42 @@
     return html;
   }
 
-  function viewCrops() {
-    const cropId = state.param && cropOf(state.param) && AGRO.cropGuides[state.param]
-      ? state.param : (state.cropGuide && AGRO.cropGuides[state.cropGuide] ? state.cropGuide : "tomato");
-    state.cropGuide = cropId;
-
+  function cropToolbar(selectedId) {
     const guideCrops = AGRO.crops.filter((c) => AGRO.cropGuides[c.id]);
-    const selector = '<div class="toolbar">' +
+    return '<div class="toolbar">' +
       '<select data-action="crops-crop" aria-label="Choose crop">' +
         guideCrops.map((c) =>
-          '<option value="' + c.id + '"' + (c.id === cropId ? " selected" : "") + ">" + esc(c.name) + "</option>").join("") +
+          '<option value="' + c.id + '"' + (c.id === selectedId ? " selected" : "") + ">" + esc(c.name) + "</option>").join("") +
       "</select>" +
       '<span class="small muted">Climate, soil, varieties, planting, water, nutrition, harvest and storage</span></div>';
+  }
+
+  /* A dead crop link gets an answer, not a neighbouring crop's agronomy. */
+  function viewCropUnknown(id) {
+    return '<div class="page-head"><div class="grow">' +
+        '<div class="eyebrow">Crop agronomy</div><h1>Agronomy guides</h1></div></div>' +
+      cropToolbar(null) +
+      '<div class="empty"><h2>No crop guide for this address</h2>' +
+        '<p class="small">The link names "' + esc(id) + '", which is not a crop in this library. ' +
+        "Choose a crop from the selector above.</p></div>";
+  }
+
+  function viewCrops() {
+    /* An address that names a crop must show that crop or say it cannot. It
+       must not quietly show a different one: a stale or mistyped link
+       (#/crops/potatoo) used to render the Tomato guide under an unchanged
+       address, and the reader had no signal that the page was not the crop
+       they asked for. No address at all is a different case - the nav link
+       opens the crop last looked at, or tomato - and that is a choice, not a
+       substitution for a named crop. */
+    const asked = state.param || null;
+    const known = asked && cropOf(asked) && AGRO.cropGuides[asked];
+    if (asked && !known) return viewCropUnknown(asked);
+    const cropId = known ? asked
+      : (state.cropGuide && AGRO.cropGuides[state.cropGuide] ? state.cropGuide : "tomato");
+    state.cropGuide = cropId;
+
+    const selector = cropToolbar(cropId);
 
     const g = AGRO.cropGuides[cropId];
     const crop = cropOf(cropId);
@@ -2063,7 +2087,11 @@
       }
       return;
     }
-    if (action === "seq-clear") { if (confirm("Clear the planned sequence?")) { state.seq = []; saveSeq(); render(); } return; }
+    if (action === "seq-clear") {
+      if (confirm("Clear the planned sequence of " + plural(state.seq.length, "season", "seasons") +
+          "? This cannot be undone.")) { state.seq = []; saveSeq(); render(); }
+      return;
+    }
     if (action === "seq-export") { exportSeq(); return; }
 
     /* library */
@@ -2093,7 +2121,8 @@
       return;
     }
     if (action === "rot-clear") {
-      if (confirm("Clear the tracked mode-of-action groups?")) {
+      if (confirm("Stop tracking " + plural(state.rot.size, "mode-of-action group", "mode-of-action groups") +
+          "? Only this device's list is cleared; nothing else is affected.")) {
         state.rot.clear(); saveRot(); render();
         /* The button that was pressed is gone; return focus to the view
            heading rather than to the body. */
@@ -2169,7 +2198,8 @@
     }
     if (action === "scout-clear") {
       if (!state.scout.length) return;
-      if (confirm("Delete all scouting records on this device?")) {
+      if (confirm("Delete all " + plural(state.scout.length, "scouting record", "scouting records") +
+          " on this device? This cannot be undone - export the CSV first if you need them.")) {
         state.scout = []; saveScout(); render();
         const h = $("#view").querySelector("h1");
         if (h) { h.setAttribute("tabindex", "-1"); h.focus(); }
