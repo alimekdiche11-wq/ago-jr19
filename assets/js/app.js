@@ -1415,12 +1415,20 @@
      VIEW: identification key
      ============================================================ */
 
+  /* The characters chosen so far, numbered. Shown above each couplet and again
+     on the outcome: an identification whose path is not stated is a label the
+     reader has to take on trust, and the printed sheet is what a colleague can
+     check. */
+  function keyTrailHtml() {
+    return state.keyTrail.length ?
+      '<div class="trail">' + state.keyTrail.map((t, i) =>
+        '<span class="t">' + (i + 1) + ". <b>" + esc(t) + "</b></span>").join('<span class="t">›</span>') + "</div>" : "";
+  }
+
   function viewKey() {
     const node = AGRO.keyNodes[state.keyNode];
 
-    const trail = state.keyTrail.length ?
-      '<div class="trail">' + state.keyTrail.map((t, i) =>
-        '<span class="t">' + (i + 1) + ". <b>" + esc(t) + "</b></span>").join('<span class="t">›</span>') + "</div>" : "";
+    const trail = keyTrailHtml();
 
     if (!node) {
       const taxon = AGRO.taxa[state.keyNode];
@@ -1454,8 +1462,10 @@
     return '<div class="page-head"><div class="grow">' +
         '<div class="eyebrow">Identification outcome</div>' +
         "<h1>Identification outcome</h1>" +
+        (state.keyTrail.length ? '<p class="lede no-print">Reached through ' + plural(state.keyTrail.length, "couplet", "couplets") +
+        ". The characters below are the path, not a diagnosis: confirm them on the specimen before acting.</p>" : "") +
       "</div></div>" +
-      '<div class="key-wrap"><div class="key-card taxon-out">' +
+      '<div class="key-wrap">' + keyTrailHtml() + '<div class="key-card taxon-out">' +
         '<div class="taxon-rank">' + esc(t.rank) + "</div>" +
         '<h2 style="font-size:28px;margin:4px 0 2px">' + esc(t.name) + "</h2>" +
         '<div class="dh-sci" style="font-family:var(--serif);font-style:italic;color:var(--ink-500);margin-bottom:14px">' + esc(t.sci) + "</div>" +
