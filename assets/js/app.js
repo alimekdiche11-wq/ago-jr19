@@ -1591,10 +1591,19 @@
     /* Counts are only comparable inside one crop, observation and unit: 4
        larvae per plant and 4 adults per trap per week measure different
        things, and thresholds are crop-specific. One series per crop +
-       observation + unit, most recently recorded first. */
+       observation + unit, most recently recorded first.
+
+       The observation is free text, so the same pest arrives spelled "Tuta
+       absoluta" and "tuta absoluta" and, before this, was charted as two
+       series: three visits to one population became a series of two and a
+       series of one, each with its own mean, and no reading showed the
+       population the reader was actually following. Grouping ignores case and
+       runs of whitespace. The bars still print the spelling last used, and the
+       stored rows, the table and the CSV are left exactly as written. */
+    const seriesKey = (s) => (s || "").replace(/\s+/g, " ").trim().toLowerCase();
     const series = new Map();
     state.scout.forEach((r) => {
-      const k = (r.crop || "") + "|" + (r.pest || "Unnamed observation") + "|" + (r.unit || "");
+      const k = (r.crop || "") + "|" + seriesKey(r.pest) + "|" + seriesKey(r.unit);
       if (!series.has(k)) series.set(k, []);
       series.get(k).push(r);
     });
@@ -1606,10 +1615,13 @@
     const shown = list.slice(-14);
     const counts = shown.map((r) => Number(r.count) || 0);
     const maxC = Math.max.apply(null, counts.concat([1]));
-    const labelOf = (l) => (cropName(l[0].crop) || "Unrecorded crop") + " - " + (l[0].pest || "Unnamed observation") +
-      (l[0].unit ? " - " + l[0].unit : "");
+    const labelOf = (l) => {
+      const last = l[l.length - 1];
+      return (cropName(last.crop) || "Unrecorded crop") + " - " + (last.pest || "Unnamed observation") +
+        (last.unit ? " - " + last.unit : "");
+    };
     const label = list.length ? labelOf(list) : "";
-    const unit = list.length ? (list[0].unit || "") : "";
+    const unit = list.length ? (list[list.length - 1].unit || "") : "";
     const mean = shown.length ? shown.reduce((s, r) => s + (Number(r.count) || 0), 0) / shown.length : 0;
 
     /* The selector is a screen control; on paper the same choice is stated as
@@ -1629,17 +1641,26 @@
     const chart = counts.length ?
       picker +
       '<div class="bars" style="height:72px;margin-top:8px">' +
-        counts.map((c, i) => '<div class="b" style="height:' + Math.max(4, Math.round((c / maxC) * 100)) +
-          '%" title="' + esc(shown[i].date + ": " + c + (unit ? " " + unit : "")) + '"></div>').join("") +
+        counts.map((c, i) => {
+          const at = esc(shown[i].date + ": " + c + (unit ? " " + unit : ""));
+          /* A recorded zero is data - "none found" - not a gap, so it keeps a
+             place in the row, but it is drawn as a flat marker rather than as
+             a short bar that would read as a small positive count. */
+          return c > 0
+            ? '<div class="b" style="height:' + Math.max(4, Math.round((c / maxC) * 100)) + '%" title="' + at + '"></div>'
+            : '<div class="b zero" title="' + at + '"></div>';
+        }).join("") +
       "</div>" +
       '<div class="small muted" style="margin-top:6px">' +
         (list.length > shown.length ? "Last " + shown.length + " of " + plural(list.length, "record", "records") : plural(shown.length, "record", "records")) +
         " &middot; " + esc(shown[0].date) + " to " + esc(shown[shown.length - 1].date) +
-        " &middot; mean <strong>" + mean.toFixed(1) + "</strong>" + (unit ? " " + esc(unit) : "") + "</div>" +
+        " &middot; mean <strong>" + mean.toFixed(1) + "</strong>" + (unit ? " " + esc(unit) : "") +
+        (counts.indexOf(0) >= 0 ? " &middot; flat mark = a recorded zero" : "") + "</div>" +
       /* The bars are visual only; the same reading is available as a sentence. */
       '<p class="sr-only">' + esc(label) + ": " + plural(shown.length, "record", "records") +
         " from " + esc(shown[0].date) + " to " + esc(shown[shown.length - 1].date) +
-        ", mean " + mean.toFixed(1) + ", latest " + counts[counts.length - 1] + ".</p>" : "";
+        ", mean " + mean.toFixed(1) + ", latest " + counts[counts.length - 1] +
+        (counts.indexOf(0) >= 0 ? ", zero on " + plural(counts.filter((c) => c === 0).length, "visit", "visits") : "") + ".</p>" : "";
 
     const table = rows.length ?
       '<div class="table-wrap"><table><thead><tr>' +

@@ -634,6 +634,8 @@ button:focus-visible,
 .bars { display: flex; align-items: flex-end; gap: 3px; height: 64px; }
 .bars .b { flex: 1 1 0; max-width: 30px; background: linear-gradient(180deg, #4bb083, #24855b); border-radius: 3px 3px 0 0; min-height: 2px; position: relative; }
 .bars .b.thr { background: linear-gradient(180deg, #f0a03a, #d97706); }
+/* Zero is a reading, not an absence of one: a flat marker, not a bar. */
+.bars .b.zero { height: 3px; min-height: 0; background: var(--line); border-radius: 2px; }
 .kbd {
   font-family: var(--mono); font-size: 10.5px; padding: 1px 5px;
   border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px;
