@@ -461,6 +461,33 @@
     state.diag = d;
   }
 
+  /* A shared identification link carries the couplet path, e.g.
+     #/key?p=k1,k2,t-thysanoptera. Walk it forward from the first couplet and
+     accept it only if every step is an option of the couplet before it: a
+     stale or hand-edited link must not land on a taxon the key would not
+     reach. The numbered trail is rebuilt from the option labels, so the link
+     carries ids only. */
+  function hydrateKey(params) {
+    const raw = (params.get("p") || "").split(",").map((s) => s.trim()).filter(Boolean);
+    if (!raw.length || raw[0] !== AGRO.keyStart) return false;
+    const path = [AGRO.keyStart];
+    const trail = [];
+    for (let i = 1; i < raw.length; i++) {
+      const node = AGRO.keyNodes[path[path.length - 1]];
+      if (!node) return false;
+      const opt = node.opts.find((o) => o.next === raw[i]);
+      if (!opt) return false;
+      trail.push(opt.label);
+      path.push(opt.next);
+    }
+    const last = path[path.length - 1];
+    if (!AGRO.keyNodes[last] && !AGRO.taxa[last]) return false;
+    state.keyPath = path;
+    state.keyTrail = trail;
+    state.keyNode = last;
+    return true;
+  }
+
   function render() {
     const r = parseHash();
     state.route = r.route;
@@ -486,6 +513,23 @@
     } else {
       state._diagShareKey = null;
       state.skipHydrate = false;
+    }
+
+    /* Same idea for the identification key: the path is authoritative when a
+       link names one. Answering a couplet does not change the address, so the
+       key guards against re-hydrating over later answers on the same link. */
+    if (r.route === "key") {
+      const keyShareKey = "key?" + r.params.toString();
+      if (r.params.has("p") && state._keyShareKey !== keyShareKey) {
+        if (!hydrateKey(r.params)) {
+          state.keyPath = [AGRO.keyStart];
+          state.keyTrail = [];
+          state.keyNode = AGRO.keyStart;
+        }
+      }
+      state._keyShareKey = keyShareKey;
+    } else {
+      state._keyShareKey = null;
     }
 
     const views = {
@@ -1485,9 +1529,18 @@
 
         '<div class="row" style="margin-top:20px">' +
           '<button class="btn" data-action="key-back">' + icon("back") + "Previous couplet</button>" +
+          '<button class="btn" data-action="key-link">' + icon("link") + "Copy link</button>" +
           '<button class="btn btn-ghost" data-action="key-reset">' + icon("rotate") + "Start over</button>" +
           '<span class="spacer"></span>' +
           '<a class="btn btn-primary" href="#/library">' + icon("book") + "Open the library</a>" +
+        "</div>" +
+        /* The trail above the card is printed with the sheet; the link is the
+           same path in a form a colleague can reopen. */
+        '<div class="print-only" style="margin-top:18px;border-top:1px solid var(--line);padding-top:8px">' +
+          '<div class="tiny">AgroScope - arthropod identification, printed ' + isoDate() +
+            ". This is a keyed determination from the characters recorded above, not a diagnosis; " +
+            "confirm them on the specimen. Any pesticide application is governed by the national label.</div>" +
+          '<div class="tiny" style="margin-top:4px">Key path: ' + esc(keyShareUrl()) + "</div>" +
         "</div>" +
       "</div></div>";
   }
@@ -2172,6 +2225,10 @@
       render();
       return;
     }
+    if (action === "key-link") {
+      copyText(keyShareUrl(), "Key path link copied.");
+      return;
+    }
 
     /* scout */
     if (action === "scout-del") {
@@ -2406,6 +2463,16 @@
     if (d.symptoms.length) q.set("symptoms", d.symptoms.join(","));
     if (d.pattern) q.set("pattern", d.pattern);
     return location.href.split("#")[0] + "#/diagnose?" + q.toString();
+  }
+
+  /* The identification path as a link. A determination a colleague can reopen
+     is one they can check against the specimen; the checklist no longer ends
+     with the app it was made in. Only the couplet ids travel - the option
+     labels are rebuilt from the key when the link is opened. */
+  function keyShareUrl() {
+    const q = new URLSearchParams();
+    q.set("p", state.keyPath.join(","));
+    return location.href.split("#")[0] + "#/key?" + q.toString();
   }
 
   /* The assessment as CSV, built only from the ranking the app already
