@@ -2361,6 +2361,12 @@
     saveScout();
     state.scoutDraft = null;
     render();
+    /* The submit button is rebuilt with the view, so focus falls to the body
+       and a keyboard reader starts again at the top of the page. The form is
+       cleared and ready for the next observation, so put the cursor back on
+       its first field; someone logging a block simply carries on. */
+    const again = $("#scoutForm");
+    if (again && again.elements.date) again.elements.date.focus();
     toast("Observation saved.");
   });
 
