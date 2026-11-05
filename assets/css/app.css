@@ -603,7 +603,10 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 
 .stack { display: flex; flex-direction: column; gap: 14px; }
 .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-.row-tight { display: flex; gap: 6px; align-items: center; }
+/* Rows of small controls. They wrap: at 320 px the diagnosis result's two
+   buttons ("Agronomy guide" and "All entries for X") did not fit one line and
+   the second hung 18 px past the card. */
+.row-tight { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .spacer { margin-left: auto; }
 hr.sep { border: 0; border-top: 1px solid var(--line); margin: 20px 0; }
 .hidden { display: none !important; }
