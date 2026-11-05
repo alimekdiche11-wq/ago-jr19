@@ -402,7 +402,11 @@ label.field input, label.field select { width: 100%; }
 
 /* ---------- library cards ---------- */
 
-.lib-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(268px, 1fr)); gap: 12px; }
+/* The 268 px floor is a desktop card width. Written as a bare minmax() it also
+   applied on a phone, where the container is ~240 px, so every card hung a few
+   pixels past the edge and the whole page slid sideways. min(268px, 100%) keeps
+   the desktop floor and lets the track shrink to the container when it has to. */
+.lib-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(268px, 100%), 1fr)); gap: 12px; }
 .lib-card {
   background: var(--card); border: 1px solid var(--line); border-radius: var(--r);
   padding: 14px; cursor: pointer; display: flex; flex-direction: column; gap: 7px;
@@ -448,7 +452,16 @@ label.field input, label.field select { width: 100%; }
 
 /* ---------- tables ---------- */
 
-.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--r); background: var(--card); }
+.table-wrap {
+  overflow-x: auto;
+  /* A wide table scrolls inside this box. Without containment the table's
+     overflow still widened the root scrolling box in Chromium, so a table on a
+     320 px phone made the whole page - top bar included - slide sideways
+     instead of just the table. `contain: paint` keeps that overflow here; the
+     print rule below removes it so a printed table is never clipped. */
+  contain: paint;
+  border: 1px solid var(--line); border-radius: var(--r); background: var(--card);
+}
 table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 thead th {
   text-align: left; font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
@@ -646,16 +659,18 @@ button:focus-visible,
 
 .seq-list { display: flex; flex-direction: column; gap: 8px; }
 .seq-chip {
-  display: flex; align-items: center; gap: 10px;
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
   padding: 9px 10px 9px 12px; border: 1px solid var(--line); border-radius: var(--r);
   background: var(--card);
 }
+/* Three 31 px controls plus a crop name do not fit a 320 px screen on one line;
+   the controls wrap under the name instead of pushing the row off the page. */
 .seq-chip .seq-n {
   width: 24px; height: 24px; flex: none; border-radius: 50%;
   display: grid; place-items: center; font-size: 12px; font-weight: 650;
   background: var(--green-50); color: var(--green-700);
 }
-.seq-chip .seq-name { font-size: 14px; font-weight: 550; display: flex; align-items: baseline; gap: 4px; }
+.seq-chip .seq-name { font-size: 14px; font-weight: 550; display: flex; align-items: baseline; gap: 4px; min-width: 0; }
 .seq-chip .icon-btn[disabled] { opacity: .3; cursor: not-allowed; }
 
 .transition {
@@ -717,7 +732,7 @@ button:focus-visible,
      form and the backup card have no meaning on paper. */
   .no-print { display: none !important; }
   .scout-grid { display: block !important; }
-  .table-wrap { overflow: visible; }
+  .table-wrap { overflow: visible; contain: none; }
   tr { break-inside: avoid; }
   .col-act { display: none !important; }
   /* An open profile is printed on its own. The listing underneath is what the
