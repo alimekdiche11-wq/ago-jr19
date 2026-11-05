@@ -462,6 +462,9 @@ label.field input, label.field select { width: 100%; }
   contain: paint;
   border: 1px solid var(--line); border-radius: var(--r); background: var(--card);
 }
+/* A long table that would otherwise push the page down: the degree-day daily
+   rows. The cap is released in print so every day reaches the paper. */
+.table-scroll { max-height: 260px; overflow-y: auto; }
 table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 thead th {
   text-align: left; font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
@@ -523,11 +526,18 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 /* ---------- gdd chart ---------- */
 
 .chart { width: 100%; height: auto; display: block; }
+/* The chart is drawn at a fixed 680-unit width and scaled to its container. On
+   a 320 px phone that scaling took the 9 px axis labels below 4 px - legible
+   in theory, unreadable in practice. The chart now keeps a readable minimum
+   width and scrolls inside its own box; paint containment keeps that overflow
+   from widening the page, as it does for a wide table. */
+.chart-wrap { overflow-x: auto; contain: paint; }
+.chart-wrap .chart { min-width: 600px; }
 .chart .grid-line { stroke: #e8ede7; stroke-width: 1; }
 .chart .area { fill: rgba(36,133,91,.12); }
 .chart .line { fill: none; stroke: var(--green-600); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
 .chart .pt { fill: var(--card); stroke: var(--green-600); stroke-width: 1.6; }
-.chart text { font-size: 9px; fill: var(--ink-400); font-family: var(--sans); }
+.chart text { font-size: 11px; fill: var(--ink-400); font-family: var(--sans); }
 
 /* ---------- detail (modal) ---------- */
 
@@ -736,6 +746,10 @@ button:focus-visible,
   .no-print { display: none !important; }
   .scout-grid { display: block !important; }
   .table-wrap { overflow: visible; contain: none; }
+  /* The degree-day daily table is capped and scrolled on screen; on paper it
+     must print every day, not the ten rows that fit the cap. */
+  .table-scroll { max-height: none; overflow-y: visible; }
+  .chart-wrap { overflow: visible; contain: none; }
   tr { break-inside: avoid; }
   .col-act { display: none !important; }
   /* An open profile is printed on its own. The listing underneath is what the

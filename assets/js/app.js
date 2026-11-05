@@ -1903,8 +1903,9 @@
       "</div>" +
       '<div class="card">' +
         '<div class="card-head"><h2>Cumulative heat units</h2><span class="spacer"></span>' +
-          '<span class="tiny muted">first to last date</span></div>' + chart +
-        '<div class="table-wrap" style="margin-top:14px;max-height:260px;overflow-y:auto">' +
+          '<span class="tiny muted">first to last date</span></div>' +
+          '<div class="chart-wrap">' + chart + '</div>' +
+        '<div class="table-wrap table-scroll" style="margin-top:14px">' +
           "<table><thead><tr><th scope=\"col\">Date</th><th scope=\"col\" class=\"num\">Tmin</th><th scope=\"col\" class=\"num\">Tmax</th><th scope=\"col\" class=\"num\">Daily GDD</th><th scope=\"col\" class=\"num\">Cumulative</th></tr></thead><tbody>" +
           g.rows.map((r) =>
             "<tr><td class=\"nowrap small\">" + esc(r.date) + "</td><td class=\"num mono\">" + r.tmin + "</td>" +
