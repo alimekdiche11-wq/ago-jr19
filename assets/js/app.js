@@ -363,7 +363,7 @@
         '<h2 id="modalTitle">Keyboard shortcuts</h2>' +
         '<p class="small muted" style="margin-top:6px">The workbench is fully usable without a mouse.</p>' +
       "</div>" +
-      '<div class="table-wrap"><table><tbody>' +
+      '<div class="table-wrap"><table><caption class="sr-only">Keyboard shortcuts</caption><tbody>' +
         rows.map((r) => '<tr><td style="width:170px"><span class="kbd">' + esc(r[0]) + '</span></td><td class="small">' + esc(r[1]) + "</td></tr>").join("") +
       "</tbody></table></div>" +
       '<div class="callout" style="margin-top:14px"><strong>Cards and results behave as buttons.</strong> ' +
@@ -935,8 +935,9 @@
   function guideSec(title, bodyHtml) {
     return '<div class="sec"><h2>' + title + "</h2>" + bodyHtml + "</div>";
   }
-  function guideRows(rows) {
-    return '<div class="table-wrap"><table><tbody>' +
+  function guideRows(rows, caption) {
+    return '<div class="table-wrap"><table>' +
+      '<caption class="sr-only">' + esc(caption || "Crop guide values") + "</caption><tbody>" +
       rows.filter((r) => r[1]).map((r) =>
         "<tr><td style=\"width:150px\"><strong>" + esc(r[0]) + "</strong></td><td>" + esc(r[1]) + "</td></tr>").join("") +
       "</tbody></table></div>";
@@ -1071,7 +1072,7 @@
         guideSec("Variety and cultivar choice", guideList(g.varieties)) +
         guideSec("Planting", guideRows([
           ["Window", plant.window], ["Method", plant.method], ["Notes", plant.notes]
-        ])) +
+        ], "Planting window, method and notes")) +
         guideSec("Plant density and spacing", guideP(g.density)) +
         guideSec("Irrigation", guideP(g.irrigation)) +
         guideSec("Nutrition", guideList(g.nutrition)) +
@@ -1367,7 +1368,10 @@
     const list = (arr) => arr && arr.length ? "<ul>" + arr.map((x) => "<li>" + esc(x) + "</li>").join("") + "</ul>" : '<p class="small muted">No specific measures recorded.</p>';
 
     const chem = (p.chem || []).length ?
-      '<div class="table-wrap" style="border:0"><table class="chem-table"><thead><tr>' +
+      '<div class="table-wrap" style="border:0"><table class="chem-table">' +
+      '<caption class="sr-only">' +
+        (isDisorder ? "Amendments and measures, with type and note" : "Active ingredients, mode-of-action group and note") +
+      "</caption><thead><tr>" +
       (isDisorder ? '<th scope="col">Amendment / measure</th><th scope="col">Type</th><th scope="col">Note</th>' : '<th scope="col">Active ingredient</th><th scope="col">MoA</th><th scope="col">Note</th>') +
       "</tr></thead><tbody>" +
       p.chem.map((c) => "<tr><td><strong>" + esc(c.ai) + "</strong></td><td><span class=\"moa-code\">" + esc(c.moa) + "</span></td><td class=\"small\">" + esc(c.note) + "</td></tr>").join("") +
@@ -1384,7 +1388,9 @@
       "must be read from the product label authorised in your country. Nothing here overrides that label.</div>";
 
     const look = (p.lookalikes || []).length ?
-      '<div class="table-wrap"><table><thead><tr><th scope="col">' + (isDisorder ? "Confusable cause" : "Confusable species") + '</th><th scope="col">How to separate</th></tr></thead><tbody>' +
+      '<div class="table-wrap"><table><caption class="sr-only">' +
+        (isDisorder ? "Causes that look alike, and how to tell them apart" : "Species that look alike, and how to separate them") +
+        "</caption><thead><tr><th scope=\"col\">" + (isDisorder ? "Confusable cause" : "Confusable species") + '</th><th scope="col">How to separate</th></tr></thead><tbody>' +
       p.lookalikes.map((l) => "<tr><td><strong>" + esc(l.n) + "</strong></td><td class=\"small\">" + esc(l.d) + "</td></tr>").join("") +
       "</tbody></table></div>" : "";
 
@@ -1521,7 +1527,7 @@
           t.diag.map((d) => "<li>" + esc(d) + "</li>").join("") + "</ul></div>" +
 
         (t.families && t.families.length ?
-          '<div class="sec"><h2>Families to consider</h2><div class="table-wrap"><table><thead><tr><th scope="col">Family</th><th scope="col">Field note</th></tr></thead><tbody>' +
+          '<div class="sec"><h2>Families to consider</h2><div class="table-wrap"><table><caption class="sr-only">Families to consider, with a field note on each</caption><thead><tr><th scope="col">Family</th><th scope="col">Field note</th></tr></thead><tbody>' +
           t.families.map((f) => "<tr><td><strong>" + esc(f.n) + "</strong></td><td class=\"small\">" + esc(f.d) + "</td></tr>").join("") +
           "</tbody></table></div></div>" : "") +
 
@@ -1750,7 +1756,7 @@
         (counts.indexOf(0) >= 0 ? ", zero on " + plural(counts.filter((c) => c === 0).length, "visit", "visits") : "") + ".</p>" : "";
 
     const table = rows.length ?
-      '<div class="table-wrap"><table><thead><tr>' +
+      '<div class="table-wrap"><table><caption class="sr-only">Scouting records, newest first</caption><thead><tr>' +
         '<th scope="col">Date</th><th scope="col">Crop</th><th scope="col">Observation</th><th scope="col">Unit</th><th scope="col" class="num">Count</th><th scope="col">Notes</th><th scope="col" class="col-act"><span class="sr-only">Actions</span></th>' +
       "</tr></thead><tbody>" +
       rows.map((r, i) =>
@@ -1906,7 +1912,7 @@
           '<span class="tiny muted">first to last date</span></div>' +
           '<div class="chart-wrap">' + chart + '</div>' +
         '<div class="table-wrap table-scroll" style="margin-top:14px">' +
-          "<table><thead><tr><th scope=\"col\">Date</th><th scope=\"col\" class=\"num\">Tmin</th><th scope=\"col\" class=\"num\">Tmax</th><th scope=\"col\" class=\"num\">Daily GDD</th><th scope=\"col\" class=\"num\">Cumulative</th></tr></thead><tbody>" +
+          "<table><caption class=\"sr-only\">Daily temperatures and heat-unit accumulation</caption><thead><tr><th scope=\"col\">Date</th><th scope=\"col\" class=\"num\">Tmin</th><th scope=\"col\" class=\"num\">Tmax</th><th scope=\"col\" class=\"num\">Daily GDD</th><th scope=\"col\" class=\"num\">Cumulative</th></tr></thead><tbody>" +
           g.rows.map((r) =>
             "<tr><td class=\"nowrap small\">" + esc(r.date) + "</td><td class=\"num mono\">" + r.tmin + "</td>" +
             "<td class=\"num mono\">" + r.tmax + "</td><td class=\"num mono\">" + r.dd.toFixed(1) + "</td>" +
@@ -1987,7 +1993,7 @@
 
       '<div class="card" style="margin-top:16px">' +
         '<div class="card-head"><h2>What a photograph cannot do</h2></div>' +
-        '<div class="table-wrap"><table><thead><tr><th scope="col">Question</th><th scope="col">What is actually required</th></tr></thead><tbody>' +
+        '<div class="table-wrap"><table><caption class="sr-only">Questions a photograph cannot answer, and what is actually required</caption><thead><tr><th scope="col">Question</th><th scope="col">What is actually required</th></tr></thead><tbody>' +
           "<tr><td>Which cryptic species of <em>Bemisia tabaci</em>?</td><td>Molecular identification (COI, mtCOI) or isoenzyme analysis.</td></tr>" +
           "<tr><td><em>Tuta absoluta</em> vs <em>Phthorimaea operculella</em>?</td><td>Genitalia dissection or DNA barcoding.</td></tr>" +
           "<tr><td>Which <em>Liriomyza</em> species?</td><td>Adult male genitalia, or rearing plus molecular confirmation.</td></tr>" +
