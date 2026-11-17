@@ -1330,15 +1330,19 @@
     const f = state.lib;
     const q = f.q.trim().toLowerCase();
 
+    /* The same words decide both lists: what the filters let through, and
+       what the search alone would find. */
+    const hayOf = (p) => [p.name, p.sci, p.fr, p.family, p.order, p.tagline].join(" ").toLowerCase();
     const items = AGRO.pests.filter((p) => {
       if (f.kind !== "all" && p.kind !== f.kind) return false;
       if (f.crop !== "all" && !(p.crops || []).includes(f.crop)) return false;
-      if (q) {
-        const hay = [p.name, p.sci, p.fr, p.family, p.order, p.tagline].join(" ").toLowerCase();
-        if (!hay.includes(q)) return false;
-      }
+      if (q && !hayOf(p).includes(q)) return false;
       return true;
     });
+    /* A search that is narrowed by a filter the reader set earlier looks like
+       an absent entry. Keep the count of what the term would find on its own,
+       so the empty state can offer the way out instead of blaming the crop. */
+    const unfiltered = q ? AGRO.pests.filter((p) => hayOf(p).includes(q)) : [];
 
     const kinds = [
       ["all", "All"], ["insect", "Insects"], ["mite", "Mites"],
@@ -1387,7 +1391,13 @@
         '<div class="lib-grid">' + items.map(libCard).join("") + "</div>" :
         (guideHits.length
           ? '<p class="small muted">No pest, disease or weed entry matches this search — the crop guide above is the relevant result.</p>'
-          : '<div class="empty"><h2>Nothing matches these filters</h2><p class="small">Clear the crop filter or search a different term.</p></div>'));
+          : (unfiltered.length
+            ? '<div class="empty"><h2>No entry matches with these filters</h2>' +
+                '<p class="small">' + plural(unfiltered.length, "entry matches", "entries match") +
+                ' "' + esc(f.q.trim()) + '" once the kind and crop filters are cleared.</p>' +
+                '<button class="btn btn-sm" data-action="lib-reset-filters" style="margin-top:12px">Show ' +
+                plural(unfiltered.length, "match", "matches") + "</button></div>"
+            : '<div class="empty"><h2>Nothing matches these filters</h2><p class="small">Clear the crop filter or search a different term.</p></div>')));
   }
 
   function libCard(p) {
@@ -2200,6 +2210,16 @@
 
     /* library */
     if (action === "lib-kind") { state.lib.kind = id; render(); return; }
+    /* The empty state's way out: drop both filters and put the reader on the
+       first entry the search had been finding all along. */
+    if (action === "lib-reset-filters") {
+      state.lib.kind = "all"; state.lib.crop = "all"; render();
+      const first = $("#view").querySelector('[data-action="open-pest"]');
+      const h = $("#view").querySelector("h1");
+      if (first) first.focus();
+      else if (h) { h.setAttribute("tabindex", "-1"); h.focus(); }
+      return;
+    }
     if (action === "open-pest") {
       const p = pestById(id);
       if (!p) return;
