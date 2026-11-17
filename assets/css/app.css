@@ -702,11 +702,19 @@ button:focus-visible,
 }
 
 @media (max-width: 940px) {
+  /* A panel that has slid off-screen must leave the tab order with it: the
+     sidebar comes before the page in the document, so a phone keyboard reader
+     would otherwise tab through a dozen invisible links before reaching the
+     content. `.closing` keeps it visible for the length of the slide-out
+     (script removes it afterwards); visibility itself is not transitioned,
+     which Chrome fails to complete for a zero-duration step. */
   .sidebar {
     position: fixed; left: 0; top: 0; transform: translateX(-100%);
-    transition: transform .22s ease; box-shadow: var(--shadow-lg);
+    transition: transform .22s ease;
+    box-shadow: var(--shadow-lg); visibility: hidden;
   }
-  .sidebar.open { transform: none; }
+  .sidebar.open, .sidebar.closing { transform: none; visibility: visible; }
+  .sidebar.closing { transform: translateX(-100%); }
   .icon-btn.menu-btn { display: grid; }
   .g3 { grid-template-columns: repeat(2, minmax(0,1fr)); }
   .view { padding: 18px 16px; }

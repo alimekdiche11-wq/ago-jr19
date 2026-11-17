@@ -605,6 +605,22 @@
     renderNav();
     $("#view").innerHTML = fn();
 
+    /* Where focus belongs after a page change: the heading of the page the
+       phone menu was covering, or the navigation link for the page now shown
+       on a wide screen, so the rebuild does not drop the reader at the top of
+       the document. */
+    if (state.focusAfterNav) {
+      const mode = state.focusAfterNav;
+      state.focusAfterNav = null;
+      const target = mode === "heading"
+        ? $("#view").querySelector("h1")
+        : $("#nav").querySelector('a[aria-current="page"]');
+      if (target) {
+        if (mode === "heading") target.setAttribute("tabindex", "-1");
+        target.focus();
+      }
+    }
+
     /* Address and screen must agree. Now that a clicked profile has its own
        address, Back (or a nav link) can leave that address while the dialog is
        still up; close it so the visible screen matches the URL. */
@@ -2455,7 +2471,7 @@
       document.activeElement.click();
       return;
     }
-    if (e.key === "Escape") { closeModal(); $("#sidebar").classList.remove("open"); syncMenu(); }
+    if (e.key === "Escape") { closeModal(); closeMenu(); }
     if (e.key === "Tab" && !$("#modal").hidden) {
       const focusables = Array.prototype.slice.call(
         $("#modal").querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')
@@ -2479,18 +2495,55 @@
   });
 
   /* menu */
+  let menuTimer = null;
   function syncMenu() {
     const open = $("#sidebar").classList.contains("open");
     $("#menuBtn").setAttribute("aria-expanded", open ? "true" : "false");
   }
-  $("#menuBtn").addEventListener("click", function () {
-    $("#sidebar").classList.toggle("open");
+  /* Closing keeps the panel visible for the slide-out and then removes it from
+     the tab order; hiding it at once would cut the animation, and a transition
+     on visibility does not complete for a zero-duration step. */
+  function closeMenu() {
+    const sb = $("#sidebar");
+    if (!sb.classList.contains("open")) return;
+    sb.classList.remove("open");
+    sb.classList.add("closing");
+    clearTimeout(menuTimer);
+    menuTimer = setTimeout(function () { sb.classList.remove("closing"); }, 260);
     syncMenu();
+  }
+  $("#menuBtn").addEventListener("click", function () {
+    if ($("#sidebar").classList.contains("open")) return closeMenu();
+    clearTimeout(menuTimer);
+    $("#sidebar").classList.remove("closing");
+    $("#sidebar").classList.add("open");
+    syncMenu();
+  });
+  /* Choosing a route from the menu closes it. The hashchange then re-renders,
+     and render() puts focus on the destination heading. A link to the page
+     already on screen changes no hash, so handle that here. */
+  $("#sidebar").addEventListener("click", function (e) {
+    const link = e.target.closest('a[href^="#/"]');
+    if (!link || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+    /* On a wide screen the navigation stays on screen: after the rebuild, put
+       focus on the link for the page now shown, so Tab continues through the
+       menu instead of restarting at the top of the document. Below 940px the
+       panel is an overlay: close it and start the reader at the heading of the
+       page it was covering. */
+    const overlay = $("#sidebar").classList.contains("open");
+    if (overlay) closeMenu();
+    const samePage = link.getAttribute("href") === location.hash;
+    if (samePage) {
+      const head = $("#view").querySelector("h1");
+      if (overlay && head) { head.setAttribute("tabindex", "-1"); head.focus(); }
+      else link.focus();
+      return;
+    }
+    state.focusAfterNav = overlay ? "heading" : "nav";
   });
   document.addEventListener("click", function (e) {
     if (window.innerWidth <= 940 && !e.target.closest("#sidebar") && !e.target.closest("#menuBtn")) {
-      $("#sidebar").classList.remove("open");
-      syncMenu();
+      closeMenu();
     }
   });
 
