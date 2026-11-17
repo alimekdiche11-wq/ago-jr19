@@ -13,7 +13,7 @@
  */
 "use strict";
 
-const CACHE = "agroscope-v85";
+const CACHE = "agroscope-v86";
 
 const SHELL = [
   "./",
@@ -23,15 +23,15 @@ const SHELL = [
   "./assets/icon-192.png",
   "./assets/icon-512.png",
   "./assets/icon-maskable-512.png",
-  "./assets/css/app.css?v=85",
-  "./assets/js/data-core.js?v=85",
-  "./assets/js/data-pests.js?v=85",
-  "./assets/js/data-pests-2.js?v=85",
-  "./assets/js/data-diseases.js?v=85",
-  "./assets/js/data-disorders.js?v=85",
-  "./assets/js/data-guides.js?v=85",
-  "./assets/js/data-ipm.js?v=85",
-  "./assets/js/app.js?v=85",
+  "./assets/css/app.css?v=86",
+  "./assets/js/data-core.js?v=86",
+  "./assets/js/data-pests.js?v=86",
+  "./assets/js/data-pests-2.js?v=86",
+  "./assets/js/data-diseases.js?v=86",
+  "./assets/js/data-disorders.js?v=86",
+  "./assets/js/data-guides.js?v=86",
+  "./assets/js/data-ipm.js?v=86",
+  "./assets/js/app.js?v=86",
 ];
 
 self.addEventListener("install", function (event) {
@@ -73,8 +73,12 @@ self.addEventListener("fetch", function (event) {
           return caches.match("./index.html").then(function (hit) { return hit || res; });
         }
         if (res && res.ok) {
+          /* One shell entry, not one per address. Routes live in the hash and
+             the release lives in a query string, so caching each navigation
+             request stored another full copy of the same page every visit;
+             offline it is still the canonical shell that gets served. */
           const copy = res.clone();
-          caches.open(CACHE).then(function (c) { c.put(req, copy); });
+          caches.open(CACHE).then(function (c) { c.put("./index.html", copy); });
         }
         return res;
       }).catch(function () {
