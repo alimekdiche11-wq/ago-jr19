@@ -1962,17 +1962,21 @@
     const chart = lineChart(g.cum, g.days, "Cumulative heat units: " + total + " over " +
       plural(g.days, "day", "days") + ", base " + g.base + " °C, highest single day " +
       g.peak.toFixed(1) + ".");
-    const skipped = g.skipped || [], swapped = g.swapped || [];
+    const skipped = g.skipped || [], swapped = g.swapped || [], unordered = g.unordered || [];
     /* Silent omission is the problem: a reader who pastes thirty days and
        sees twenty-eight must be told which lines did not count. */
-    const reading = skipped.length || swapped.length ?
+    const reading = skipped.length || swapped.length || unordered.length ?
       '<div class="callout" style="margin-bottom:14px">' +
         (skipped.length ? "<strong>" + (skipped.length === 1 ? "One line was ignored." : skipped.length + " lines were ignored.") + "</strong> " +
           (skipped.length === 1 ? "Line " : "Lines ") + lineRefs(skipped) +
           " did not contain a usable temperature pair, so the totals below exclude " +
           (skipped.length === 1 ? "it" : "them") + ". " : "") +
         (swapped.length ? "<strong>Tmin above Tmax on " + (swapped.length === 1 ? "line " : "lines ") + lineRefs(swapped) +
-          ".</strong> " + (swapped.length === 1 ? "That pair was" : "Those pairs were") + " read as (min, max)." : "") +
+          ".</strong> " + (swapped.length === 1 ? "That pair was" : "Those pairs were") + " read as (min, max). " : "") +
+        (unordered.length ? "<strong>Dates run backwards on " + (unordered.length === 1 ? "line " : "lines ") + lineRefs(unordered) +
+          ".</strong> " + (unordered.length === 1 ? "That day is" : "Those days are") +
+          " earlier than the line above, and heat is accumulated in the order shown, so the curve is not chronological. " +
+          "Sort oldest first before reading the totals." : "") +
       "</div>" : "";
     return reading + '<div class="grid g3" style="margin-bottom:14px">' +
         stat("Accumulated GDD", total, plural(g.days, "day", "days") + " · base " + g.base + " °C") +
@@ -2763,6 +2767,8 @@
     const rows = [];
     const skipped = [];
     const swapped = [];
+    const unordered = [];
+    let lastIso = null;
     let cum = 0, peak = 0;
 
     /* A temperature in degrees Celsius outside this range is a typo or a date
@@ -2785,6 +2791,14 @@
       else { skipped.push(idx + 1); return; }
       if (isNaN(tmin) || isNaN(tmax) || !plausible(tmin) || !plausible(tmax)) { skipped.push(idx + 1); return; }
       if (tmin > tmax) { const t = tmin; tmin = tmax; tmax = t; swapped.push(idx + 1); }
+      /* Heat is accumulated in the order the lines arrive, so a date earlier
+         than the line above makes the curve run backwards while looking
+         authoritative. Only unambiguous ISO dates are compared: 03/10 could
+         be March or October, and guessing would warn about nothing. */
+      if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        if (lastIso && date < lastIso) unordered.push(idx + 1);
+        lastIso = date;
+      }
       const dd = Math.max(0, (tmin + tmax) / 2 - base);
       cum += dd;
       if (dd > peak) peak = dd;
@@ -2795,7 +2809,7 @@
     state.gdd = {
       base: base, raw: raw, rows: rows, cum: rows.map((r) => r.cum),
       days: rows.length, total: cum, peak: peak,
-      skipped: skipped, swapped: swapped
+      skipped: skipped, swapped: swapped, unordered: unordered
     };
     render();
     toast(plural(rows.length, "day accumulated.", "days accumulated.") +
