@@ -1403,6 +1403,11 @@
 
       guideStrip +
 
+      (state.param && !AGRO.pests.some((p) => p.id === state.param) ?
+        '<div class="callout red" style="margin-bottom:16px"><strong>No profile is called "' + esc(state.param) + '" in this build.</strong> ' +
+          "The library is shown instead. The link may come from an older version, or its id may be mistyped; " +
+          '<a href="#/library">open the plain library</a> to browse.</div>' : "") +
+
       (items.length ?
         '<div class="lib-grid">' + items.map(libCard).join("") + "</div>" :
         (guideHits.length
