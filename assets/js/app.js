@@ -250,6 +250,35 @@
 
   let toastTimer = null;
   let toastAction = null;
+  /* Why the bar is being held open: a pointer or the keyboard is on it. */
+  const toastHeld = { pointer: false, focus: false };
+
+  /* The countdown runs only while nobody is using the bar. Someone who has
+     reached the action must not lose it mid-reach - the timer used to hide
+     the button under the cursor of the very reader trying to press it, which
+     dropped focus to the body and made the deletion permanent. WCAG 2.2.1
+     asks for a time limit the reader can extend; hovering or focusing the
+     bar is how it is extended here. */
+  function armToast() {
+    clearTimeout(toastTimer);
+    const t = $("#toast");
+    if (!t || t.hidden || toastHeld.pointer || toastHeld.focus) return;
+    toastTimer = setTimeout(() => {
+      t.hidden = true;
+      $("#toastUndo").hidden = true;
+      toastAction = null;
+    }, toastAction ? 7000 : 2600);
+  }
+
+  /* Take the pending action: from the bar's button, or from Ctrl/Command+Z. */
+  function runToastAction() {
+    const act = toastAction;
+    toastAction = null;
+    clearTimeout(toastTimer);
+    $("#toast").hidden = true;
+    $("#toastUndo").hidden = true;
+    if (act) act.run();
+  }
 
   /* A message for the live region, optionally with one action the reader can
      take before it disappears (used to undo a deletion). The action is not
@@ -269,13 +298,24 @@
       undo.hidden = true;
     }
     t.hidden = false;
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => {
-      t.hidden = true;
-      undo.hidden = true;
-      toastAction = null;
-    }, action ? 7000 : 2600);
+    armToast();
   }
+
+  (function () {
+    const t = $("#toast");
+    if (!t) return;
+    /* Holding cancels the countdown at once, not only when it is next armed:
+       the bar is usually reached inside the window it was armed with. */
+    function hold(why) { toastHeld[why] = true; clearTimeout(toastTimer); }
+    t.addEventListener("pointerenter", function () { hold("pointer"); });
+    t.addEventListener("pointerleave", function () { toastHeld.pointer = false; armToast(); });
+    t.addEventListener("focusin", function () { hold("focus"); });
+    t.addEventListener("focusout", function (e) {
+      if (t.contains(e.relatedTarget)) return;
+      toastHeld.focus = false;
+      armToast();
+    });
+  })();
 
   /* ---------------- modal ---------------- */
 
@@ -357,7 +397,8 @@
       ["?", "Show this shortcut list"],
       ["Esc", "Close a dialog or the menu"],
       ["Enter / Space", "Open the focused card or result"],
-      ["Tab / Shift+Tab", "Move focus; cycles inside a dialog"]
+      ["Tab / Shift+Tab", "Move focus; cycles inside a dialog"],
+      ["Ctrl / ⌘ + Z", "Undo the deletion just announced"]
     ];
     return '<div class="detail-head">' +
         '<h2 id="modalTitle">Keyboard shortcuts</h2>' +
@@ -2086,14 +2127,7 @@
     const id = el.getAttribute("data-id");
 
     /* navigation-adjacent */
-    if (action === "toast-undo") {
-      const act = toastAction;
-      toastAction = null;
-      clearTimeout(toastTimer);
-      $("#toast").hidden = true;
-      if (act) act.run();
-      return;
-    }
+    if (action === "toast-undo") { runToastAction(); return; }
     if (action === "new-scout") { location.hash = "#/scout"; setTimeout(() => { const f = $("#scoutForm"); if (f) f.querySelector("input[name=pest]").focus(); }, 60); return; }
     if (action === "close-modal") { closeModal(); return; }
     if (action === "print") { window.print(); return; }
@@ -2380,6 +2414,19 @@
 
   /* keyboard */
   document.addEventListener("keydown", function (e) {
+    /* Undo the deletion that the bar is still offering. The bar sits at the
+       end of the document, so tabbing to its button can take longer than the
+       window it is shown for; this works from the table where the reader
+       already is. Left alone while typing, where the browser's own text undo
+       is the useful one. */
+    if ((e.key === "z" || e.key === "Z") && (e.ctrlKey || e.metaKey) && toastAction && $("#modal").hidden) {
+      const a = document.activeElement;
+      if (!a || (!a.isContentEditable && !/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))) {
+        e.preventDefault();
+        runToastAction();
+        return;
+      }
+    }
     // Keyboard activation for interactive cards/rows that are not native buttons.
     if ((e.key === "Enter" || e.key === " ") && document.activeElement &&
         document.activeElement.hasAttribute("data-action") &&
