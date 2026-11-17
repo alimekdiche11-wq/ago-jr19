@@ -70,7 +70,9 @@
   };
 
   function sevBar(n) {
-    let html = '<span class="sev sev' + n + '" title="Severity ' + n + '/5">';
+    /* Five bars are a picture of a number, so the number needs words: a title
+       tooltip is not reliably announced, and the bars themselves are empty. */
+    let html = '<span class="sev sev' + n + '" role="img" aria-label="Severity ' + n + ' of 5" title="Severity ' + n + '/5">';
     for (let i = 1; i <= 5; i++) html += '<i class="' + (i <= n ? "on" : "") + '"></i>';
     return html + "</span>";
   }
@@ -1111,7 +1113,7 @@
     const head = '<div class="page-head"><div class="grow">' +
         '<div class="eyebrow">Crop agronomy · section 6</div>' +
         "<h1>" + esc(crop ? crop.name : cropId) + (crop ? ' <span class="dh-sci" style="font-size:16px">' + esc(crop.sci) + "</span>" : "") + "</h1>" +
-        (crop && crop.fr ? '<div class="small muted" style="margin-top:-4px">French: ' + esc(crop.fr) + "</div>" : "") +
+        (crop && crop.fr ? '<div class="small muted" style="margin-top:-4px">French: <span lang="fr">' + esc(crop.fr) + "</span></div>" : "") +
         '<p class="lede">The agronomic context that decides whether a crop problem is even possible: climate, soil, cultivar, planting date, ' +
         "water and nutrition. Manage these first; a diagnostic list without them is guesswork.</p>" +
       "</div>" +
@@ -1481,7 +1483,7 @@
           '<span class="pill pill-ghost">Severity ' + p.severity + "/5</span></div>" +
         '<h2 id="modalTitle">' + esc(p.name) + "</h2>" +
         '<div class="dh-sci">' + esc(p.sci) + "</div>" +
-        (p.fr ? '<div class="small muted" style="margin-top:4px">French: ' + esc(p.fr) + "</div>" : "") +
+        (p.fr ? '<div class="small muted" style="margin-top:4px">French: <span lang="fr">' + esc(p.fr) + "</span></div>" : "") +
         '<div class="dh-meta">' +
           ((p.crops || []).map((c) => AGRO.cropGuides[c]
             ? '<a class="pill pill-green" data-action="open-crop" data-id="' + c + '" title="Open the crop agronomy guide">' + esc(cropName(c)) + "</a>"
