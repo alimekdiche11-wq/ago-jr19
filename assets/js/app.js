@@ -132,7 +132,14 @@
     if (!r || typeof r !== "object" || Array.isArray(r)) return null;
     const date = typeof r.date === "string" ? r.date.trim() : "";
     const pest = typeof r.pest === "string" ? r.pest.trim() : "";
-    const count = Number(r.count);
+    /* A zero is a reading - "none found" - and has to survive. A missing or
+       blank one is not: Number("") and Number(null) are both 0, so a
+       hand-edited or older backup used to arrive as a recorded zero, pull the
+       mean down and print "none found" on a visit where nothing was counted.
+       Only a number, or a string that holds one, is a count. */
+    const rawCount = typeof r.count === "string" ? r.count.trim() : r.count;
+    const countable = typeof rawCount === "number" || (typeof rawCount === "string" && rawCount !== "");
+    const count = countable ? Number(rawCount) : NaN;
     if (!date || !pest || !isFinite(count) || count < 0) return null;
     return {
       id: typeof r.id === "string" && r.id ? r.id : "s" + Math.random().toString(36).slice(2, 10),
