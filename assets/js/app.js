@@ -1176,7 +1176,7 @@
           '<div class="stack" style="gap:8px">' +
             '<a class="btn btn-sm" href="#/library/' + cropId + '/all">' + icon("book") + "All " + plural(fieldCount, "reference entry", "reference entries") + "</a>" +
             (disorderCount ? '<a class="btn btn-sm" href="#/library/' + cropId + '/disorder">' + icon("leaf") + "Disorders for this crop (" + disorderCount + ")</a>" : "") +
-            '<a class="btn btn-sm" href="#/ipm/' + cropId + '">' + icon("ipm") + "IPM programme</a>" +
+            (cropId !== "stored" ? '<a class="btn btn-sm" href="#/ipm/' + cropId + '">' + icon("ipm") + "IPM programme</a>" : "") +
             '<a class="btn btn-sm" href="#/diagnose">' + icon("diag") + "Diagnose a problem</a>" +
             '<a class="btn btn-sm" href="#/gdd">' + icon("gdd") + "Degree-day timing</a>" +
           "</div>" +
@@ -1636,21 +1636,60 @@
      VIEW: IPM planner
      ============================================================ */
 
+  /* The timeline is a growing season: it starts before planting and ends after
+     harvest. Stored-product protection is post-harvest, so it is not on that
+     sequence, and the planner does not offer it as a crop. */
+  function ipmCrops() {
+    return AGRO.crops.filter((c) => c.id !== "stored");
+  }
+
+  /* No crop may be claimed by omission: the page's heading, the selector and
+     the programme shown have to be the same crop. A crop is selected only by
+     its own address or by an earlier choice that is still valid. */
+  function ipmToolbar(cropId) {
+    return '<div class="toolbar">' +
+      '<select data-action="ipm-crop" aria-label="Choose crop">' +
+        (cropId ? "" : '<option value="" selected>Choose a crop…</option>') +
+        ipmCrops().map((c) =>
+          '<option value="' + c.id + '"' + (c.id === cropId ? " selected" : "") + ">" + esc(c.name) + "</option>").join("") +
+      "</select>" +
+      '<span class="small muted">Programme adapts to the crop phenology</span>' +
+      '<span class="spacer"></span>' +
+      (cropId && AGRO.cropGuides[cropId] ? '<a class="btn btn-sm" href="#/crops/' + cropId + '">' + icon("leaf") + "Agronomy guide</a>" : "") +
+      "</div>";
+  }
+
+  function viewIpmNoCrop(asked) {
+    const head = '<div class="page-head"><div class="grow">' +
+        '<div class="eyebrow">Integrated pest management</div><h1>Seasonal programme</h1></div></div>' +
+      ipmToolbar(null);
+    if (asked === "stored") {
+      return head + '<div class="empty"><h2>Stored products are not on the seasonal timeline</h2>' +
+        '<p class="small">The programme here runs from before planting to after harvest, which does not describe protection in store. ' +
+        'The <a href="#/crops/stored">stored-product guide</a> and its <a href="#/library/stored/all">reference entries</a> cover that. ' +
+        "Choose a growing crop above for the seasonal planner.</p></div>";
+    }
+    return head + '<div class="empty"><h2>No programme for this address</h2>' +
+      '<p class="small">The link names "' + esc(asked || "") + '", which is not a crop in this library. ' +
+      "Choose a crop from the selector above.</p></div>";
+  }
+
   function viewIpm() {
-    const cropId = state.param && cropOf(state.param) ? state.param : (state.ipmCrop || "tomato");
+    const offered = ipmCrops();
+    const asked = state.param || null;
+    /* Same rule as the crop guides: an address that names a crop must show
+       that crop or say it cannot. #/ipm/potatoo used to render the tomato
+       programme under an unchanged address, and #/ipm/stored put a stored
+       heading above a selector still reading Tomato. */
+    const cropId = asked
+      ? (offered.some((c) => c.id === asked) ? asked : null)
+      : (offered.some((c) => c.id === state.ipmCrop) ? state.ipmCrop : "tomato");
+    if (!cropId) return viewIpmNoCrop(asked);
     state.ipmCrop = cropId;
     const prog = AGRO.ipmPrograms[cropId];
     const crop = cropOf(cropId);
 
-    const selector = '<div class="toolbar">' +
-      '<select data-action="ipm-crop" aria-label="Choose crop">' +
-      AGRO.crops.filter((c) => c.id !== "stored").map((c) =>
-        '<option value="' + c.id + '"' + (c.id === cropId ? " selected" : "") + ">" + esc(c.name) + "</option>").join("") +
-      "</select>" +
-      '<span class="small muted">Programme adapts to the crop phenology</span>' +
-      '<span class="spacer"></span>' +
-      (AGRO.cropGuides[cropId] ? '<a class="btn btn-sm" href="#/crops/' + cropId + '">' + icon("leaf") + "Agronomy guide</a>" : "") +
-      "</div>";
+    const selector = ipmToolbar(cropId);
 
     const stages = prog ? prog.stages : AGRO.ipmGeneric;
     const note = prog ? prog.note : "No crop-specific programme is stored yet — the generic framework applies.";
@@ -2396,7 +2435,7 @@
       return;
     }
     if (action === "crops-crop") { state.cropGuide = el.value; location.hash = "#/crops/" + el.value; return; }
-    if (action === "ipm-crop") { location.hash = "#/ipm/" + el.value; return; }
+    if (action === "ipm-crop") { if (!el.value) return; location.hash = "#/ipm/" + el.value; return; }
     if (action === "rot-toggle") {
       const key = el.getAttribute("data-key");
       if (el.checked) state.rot.add(key); else state.rot.delete(key);
