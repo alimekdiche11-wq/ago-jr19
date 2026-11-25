@@ -2696,8 +2696,41 @@
     toast("Assessment CSV exported.");
   }
 
+  /* When the clipboard is unavailable — a file:// page, a refused permission —
+     the link still has to reach the reader. Telling them to copy it from the
+     address bar was wrong wherever the link is built from state: the
+     diagnosis answers, the key path and any profile reached from the list
+     exist only in the string, never in the address. The string is shown,
+     already selected. If a dialog is open the field goes into it, so sharing
+     a profile does not replace the profile being shared. */
+  function showLinkField(text) {
+    const existing = $("#linkFallbackField");
+    if (existing) { existing.focus(); existing.select(); return; }
+    const block = '<div class="link-fallback">' +
+      '<label class="field" for="linkFallbackField"><span>Link to copy</span>' +
+        '<input type="text" id="linkFallbackField" readonly value="' + esc(text) + '" aria-describedby="linkFallbackHelp">' +
+      "</label>" +
+      '<p class="small muted" id="linkFallbackHelp">The clipboard is not available here, so the link is shown instead. ' +
+        "It is selected: press Ctrl+C (⌘C on a Mac) to copy it.</p>" +
+      "</div>";
+    if ($("#modal").hidden) {
+      openModal('<div class="detail-head"><h2 id="modalTitle">Copy this link</h2></div>' + block);
+    } else {
+      $("#modalBody").insertAdjacentHTML("afterbegin", block);
+    }
+    const f = $("#linkFallbackField");
+    if (f) { f.focus(); f.select(); }
+  }
+
   function copyText(text, okMsg) {
+    /* The execCommand fallback focuses a hidden textarea, and removing a
+       focused node drops focus to the body. Capture the control that asked
+       now, so the dialog that may follow can put focus back where it came
+       from when it closes. */
+    const opener = document.activeElement;
     const fail = function () {
+      /* A hidden textarea and execCommand still work on file:// in browsers
+         that have no clipboard API, so try that before giving up. */
       const ta = document.createElement("textarea");
       ta.value = text;
       ta.setAttribute("readonly", "");
@@ -2705,12 +2738,18 @@
       document.body.appendChild(ta);
       ta.select();
       let ok = false;
-      try { ok = document.execCommand("copy"); } catch (e) {}
+      try { ok = document.execCommand ? document.execCommand("copy") : false; } catch (e) {}
       ta.remove();
-      toast(ok ? okMsg : "Copy failed — select the address bar and copy the link.");
+      if (opener && opener !== document.body && document.contains(opener)) opener.focus();
+      if (ok) toast(okMsg); else showLinkField(text);
     };
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(function () { toast(okMsg); }, fail);
+      /* A browser can throw here as well as reject — a permission denied in
+         a sandboxed page — and an uncaught throw would leave the button
+         doing nothing at all. */
+      try {
+        navigator.clipboard.writeText(text).then(function () { toast(okMsg); }, fail);
+      } catch (e) { fail(); }
     } else {
       fail();
     }
